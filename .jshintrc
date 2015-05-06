@@ -23,6 +23,9 @@
     "jasmine": false,
 
     "d3": false,
+    "test": false,
+    "equal": false,
+    "ok": false,
 
     "pluralidx": false,
     "gettext": false,
