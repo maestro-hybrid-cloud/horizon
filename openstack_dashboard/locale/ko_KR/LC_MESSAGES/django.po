@@ -16764,3 +16764,8 @@ msgstr "시간 델타값은 일자 단위로 시간 범위를 나타내는 숫�
 #, python-format
 msgid "Failed to get the resource name: %s"
 msgstr "리소스 이름 가져오기 실패: %s"
+
+#######################################################
+#: dashboards/project/hybridcloud/panel.py:5
+msgid "Hybrid Cloud"
+msgstr "하이브리드 클라우드"
