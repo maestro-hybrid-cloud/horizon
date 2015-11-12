@@ -52,6 +52,20 @@ function Server(data) {
   this.ip_addresses = [];
 }
 
+function Channel(data) {
+  for (var key in data) {
+    if ({}.hasOwnProperty.call(data, key)) {
+      this[key] = data[key];
+    }
+  }
+  this.iconType = 'text';
+  this.icon = '\uf092';
+  this.networks = [];
+  this.ports = [];
+  this.type = 'channel';
+  this.whatever = [];
+}
+
 horizon.network_topology = {
   model: null,
   fa_globe_glyph: '\uf0ac',
@@ -88,6 +102,7 @@ horizon.network_topology = {
     self.data.routers = {};
     self.data.servers = {};
     self.data.ports = {};
+    self.data.channels = {};
 
     // Setup balloon popups
     self.balloonTmpl = Hogan.compile(angular.element('#balloon_container').html());
@@ -427,6 +442,8 @@ horizon.network_topology = {
             return 25;
           case Server.prototype:
             return 20;
+          case Channel.prototype:
+            return 40;
         }
       })
       .style('fill', 'white')
@@ -449,6 +466,8 @@ horizon.network_topology = {
                 return 'scale(1.5)';
               case Server.prototype:
                 return 'scale(1)';
+              case Channel.prototype:
+                return 'scale(2)';
             }
           });
         break;
@@ -487,6 +506,8 @@ horizon.network_topology = {
             return 'translate(30,3)';
           case Server.prototype:
             return 'translate(25,3)';
+          case Channel.prototype:
+            return 'translate(20,3)';
         }
       });
 
