@@ -27,7 +27,9 @@ from django.views.generic import View  # noqa
 
 from horizon import exceptions
 from horizon import views
+from horizon import messages
 from openstack_dashboard import api
+from openstack_dashboard import policy
 from openstack_dashboard.usage import quotas
 from openstack_dashboard.dashboards.project.hybrid_cloud.instances \
     import tables as instances_tables
@@ -376,6 +378,62 @@ class JSONView(View):
         return vpn_channels
 
 
+    def _get_tenants(self, request):
+        tenants = []
+        domain_context = self.request.session.get('domain_context', None)
+        self._more = False
+        if policy.check((("identity", "identity:list_projects"),),
+                        self.request):
+            try:
+                tenants, self._more = api.keystone.tenant_list(
+                    self.request,
+                    domain=domain_context)
+            except Exception:
+                exceptions.handle(self.request,
+                                  _("Unable to retrieve project list."))
+        elif policy.check((("identity", "identity:list_user_projects"),),
+                          self.request):
+            try:
+                tenants, self._more = api.keystone.tenant_list(
+                    self.request,
+                    user=self.request.user.id,
+                    admin=False)
+            except Exception:
+                exceptions.handle(self.request,
+                                  _("Unable to retrieve project information."))
+        else:
+            msg = \
+                _("Insufficient privilege level to view project information.")
+            messages.info(self.request, msg)
+        return tenants
+
+    def _get_tenant_networks(self, request):
+        tenants = self._get_tenants(request)
+
+        networks = []
+
+        for t in tenants:
+            try:
+                neutron_networks = api.neutron.network_list_for_tenant(
+                    request, t.id)
+            except Exception:
+                neutron_networks = []
+            networks = []
+            for network in neutron_networks:
+                obj = {'name': network.name,
+                       'id': network.id,
+                       'subnets': [{'id': subnet.id,
+                                    'cidr': subnet.cidr}
+                                   for subnet in network.subnets],
+                       'status': network.status,
+                       'router:external': network['router:external']}
+                self.add_resource_url('horizon:project:networks:subnets:detail',
+                                      obj['subnets'])
+                networks.append(obj)
+
+        return networks
+
+
     #
     # def _get_resources(self, request):
     #     try:
@@ -407,7 +465,12 @@ class JSONView(View):
         data = {'servers': self._get_servers(request),
                 'networks': self._get_networks(request),
                 'ports': self._get_ports(request),
-                'routers': self._get_routers(request)}
+                'routers': self._get_routers(request),
+                'channels': self._get_channels(request),
+                'stacks': self._get_stacks(request),
+                'resources': self._get_resources(request),
+                'tenant_networks': self._get_tenant_networks(request)
+                }
         self._prepare_gateway_ports(data['routers'], data['ports'])
         json_string = json.dumps(data, ensure_ascii=False)
         return HttpResponse(json_string, content_type='text/json')

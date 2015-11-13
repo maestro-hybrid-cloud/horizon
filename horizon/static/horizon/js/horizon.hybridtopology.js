@@ -104,6 +104,7 @@ horizon.hybrid_topology = {
     self.data.servers = {};
     self.data.ports = {};
     self.data.channels = {};
+    self.data.tenant_networks = {};
 
     // Setup balloon popups
     self.balloonTmpl = Hogan.compile(angular.element('#balloon_container').html());
@@ -112,7 +113,7 @@ horizon.hybrid_topology = {
     self.balloon_netTmpl = Hogan.compile(angular.element('#balloon_net').html());
     self.balloon_instanceTmpl = Hogan.compile(angular.element('#balloon_instance').html());
 
-    self.balloon_monitorTmpl = Hogan.compile(angular.element('#balloon_monitor').html());
+    //self.balloon_monitorTmpl = Hogan.compile(angular.element('#balloon_monitor').html());
 
     angular.element(document)
       .on('click', 'a.closeTopologyBalloon', function(e) {
@@ -653,6 +654,14 @@ horizon.hybrid_topology = {
         return obj == d.data;
       };
     };
+
+
+    _tenet_ref = data.tenant_networks;
+    for (_i = 0, _tenetlen = _tenet_ref.length; _i < _tenetlen; _i++) {
+      tenet = _tenet_ref[_i];
+      console.log(tenet)
+    }
+
 
     // Networks
     _netref = data.networks;
