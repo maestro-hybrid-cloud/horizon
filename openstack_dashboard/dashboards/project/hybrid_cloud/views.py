@@ -327,9 +327,55 @@ class JSONView(View):
                               ports)
         return ports
 
-    # def _get_stacks(self, request):
-    #     try:
-    #         stack = api.heat.stack_get(request, stack_id)
+    def _get_stacks(self, request):
+        try:
+            stacks, self._more, self._prev = api.heat.stacks_list(self.request)
+        except Exception:
+            self._prev = False
+            self._more = False
+            msg = _('Unable to retrieve stack list.')
+            exceptions.handle(self.request, msg)
+
+        return stacks
+
+    def _get_resources(self, request):
+        try:
+            heat_resources = api.heat.resources_list(request, "P3");
+        except Exception:
+            heat_resources = []
+
+        resources = []
+        for resource in heat_resources:
+            obj = {'name' : 'test' }
+
+
+        try:
+            neutron_networks = api.neutron.network_list_for_tenant(
+                request,
+                request.user.tenant_id)
+        except Exception:
+            neutron_networks = []
+        networks = []
+        for network in neutron_networks:
+            obj = {'name': network.name,
+                   'id': network.id,
+                   'subnets': [{'id': subnet.id,
+                                'cidr': subnet.cidr}
+                               for subnet in network.subnets],
+                   'status': network.status,
+                   'router:external': network['router:external']}
+            self.add_resource_url('horizon:project:networks:subnets:detail',
+                                  obj['subnets'])
+            networks.append(obj)
+
+    def _get_channels(self, request):
+        try:
+            vpn_channels = api.heat.stacks_list(request)
+        except Exception:
+            vpn_channels = []
+        return vpn_channels
+
+
     #
     # def _get_resources(self, request):
     #     try:

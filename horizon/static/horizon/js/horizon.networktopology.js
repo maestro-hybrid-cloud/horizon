@@ -518,6 +518,8 @@ horizon.network_topology = {
         .style('font-size','20')
         .text('')
         .attr('transform', 'translate(26,38)');
+    } else if (data.data instanceof Channel || data.data instanceof Channel) {
+      //nodeEnter.append()
     }
 
     nodeEnter.on('click', function(d) {
@@ -720,6 +722,17 @@ horizon.network_topology = {
       }
       self.data.servers[server.id] = server;
     }
+
+    // Channel
+    _channelref = data.channels;
+    for (_l = 0, _channellen = _channelref.length; _l < _channellen; _l++) {
+      channel = _channelref[_l];
+      if (!self.already_in_graph(self.data.channels, channel)) {
+        self.new_node(channel);
+
+      }
+    }
+
 
     // Ports
     _portref = data.ports;
