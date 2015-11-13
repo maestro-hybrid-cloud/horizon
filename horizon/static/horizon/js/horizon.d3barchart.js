@@ -326,7 +326,8 @@ horizon.d3_bar_chart = {
     } else {
       self.h = parseFloat(self.jquery_element.height());
     }
-
+    self.w = 500;
+    self.h = 500;
     /* Start coordinations of the chart and size of the chart wrapper.
        Chart can have other elements next to it, so it doesn't have to
        start at 0.
@@ -342,6 +343,8 @@ horizon.d3_bar_chart = {
     }
     self.chart_wrapper_h = self.h;
 
+self.chart_wapper_w = 300;
+self.chart_wapper_h = 300;
     // Basic settigns of the chart
     self.lvl_curve = 3;
     self.bkgrnd = '#F2F2F2';

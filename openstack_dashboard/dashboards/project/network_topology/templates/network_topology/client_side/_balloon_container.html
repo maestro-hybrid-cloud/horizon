@@ -1,6 +1,7 @@
 {% extends "horizon/client_side/template.html" %}
 {% load horizon %}
-
+{% load url from future %}
+{% load i18n %}
 {% block id %}balloon_container{% endblock %}
 
 {% block template %}
@@ -10,7 +11,9 @@
   <div class="contentBody">
     [[> table1]]
     [[> table2]]
-  </div>
+    [[> table3]]
+   </div>
+
   <div class="footer">
     <div class="footerInner">
       <div class="cell link">
@@ -32,3 +35,8 @@
 </div>
 {% endjstemplate %}
 {% endblock %}
+
+<script type="text/javascript">
+      horizon.d3_line_chart.init("div[data-chart-type='line_chart']",
+                                 {'auto_resize': true});
+</script>

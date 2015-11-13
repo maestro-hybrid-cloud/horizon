@@ -1,0 +1,36 @@
+{% extends "horizon/client_side/template.html" %}
+{% load i18n %}
+{% load horizon %}
+{% load url from future %}
+
+
+
+{% block id %}balloon_monitor{% endblock %}
+
+
+{% block template %}
+{% jstemplate %}
+
+<div class="portTableHeader">
+ <div class="title">CPU_Util</div>
+</div>
+<table class="detailInfoTable">
+ <caption></caption>
+ <tbody>
+
+   <div class="chart_container">
+     <div id="line_chart"
+          data-chart-type="line_chart"
+          data-url="{% url 'horizon:project:network_topology:samples'%}?instance_id=[[id]]"
+          data-form-selector='#linechart_general_form'>
+     </div>
+   </div>
+
+
+
+ </tbody>
+</table>
+
+{% endjstemplate %}
+{% endblock %}
+
