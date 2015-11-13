@@ -18,7 +18,7 @@ from openstack_dashboard.dashboards.project.routers import tables
 
 
 class DeleteRouter(tables.DeleteRouter):
-    redirect_url = "horizon:project:network_topology:router"
+    redirect_url = "horizon:project:hybrid_cloud:router"
 
 
 class RoutersTable(tables.RoutersTable):

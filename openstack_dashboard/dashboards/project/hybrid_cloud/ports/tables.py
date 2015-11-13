@@ -19,7 +19,7 @@ from openstack_dashboard.dashboards.project.routers.ports import tables
 
 
 class RemoveInterface(tables.RemoveInterface):
-    failure_url = 'horizon:project:network_topology:router'
+    failure_url = 'horizon:project:hybrid_cloud:router'
 
 
 class PortsTable(tables.PortsTable):

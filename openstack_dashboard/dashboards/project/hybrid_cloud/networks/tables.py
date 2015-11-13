@@ -18,7 +18,7 @@ from openstack_dashboard.dashboards.project.networks import tables
 
 
 class DeleteNetwork(tables.DeleteNetwork):
-    redirect_url = "horizon:project:network_topology:network"
+    redirect_url = "horizon:project:hybrid_cloud:network"
 
 
 class NetworksTable(tables.NetworksTable):

@@ -19,7 +19,7 @@ from openstack_dashboard.dashboards.project.networks.subnets import tables
 
 
 class DeleteSubnet(tables.DeleteSubnet):
-    failure_url = 'horizon:project:network_topology:network'
+    failure_url = 'horizon:project:hybrid_cloud:network'
 
 
 class SubnetsTable(tables.SubnetsTable):

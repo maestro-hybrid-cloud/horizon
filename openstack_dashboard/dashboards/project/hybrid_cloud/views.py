@@ -29,15 +29,15 @@ from horizon import exceptions
 from horizon import views
 from openstack_dashboard import api
 from openstack_dashboard.usage import quotas
-from openstack_dashboard.dashboards.project.network_topology.instances \
+from openstack_dashboard.dashboards.project.hybrid_cloud.instances \
     import tables as instances_tables
-from openstack_dashboard.dashboards.project.network_topology.networks \
+from openstack_dashboard.dashboards.project.hybrid_cloud.networks \
     import tables as networks_tables
-from openstack_dashboard.dashboards.project.network_topology.ports \
+from openstack_dashboard.dashboards.project.hybrid_cloud.ports \
     import tables as ports_tables
-from openstack_dashboard.dashboards.project.network_topology.routers \
+from openstack_dashboard.dashboards.project.hybrid_cloud.routers \
     import tables as routers_tables
-from openstack_dashboard.dashboards.project.network_topology.subnets \
+from openstack_dashboard.dashboards.project.hybrid_cloud.subnets \
     import tables as subnets_tables
 from openstack_dashboard.dashboards.project.instances import\
     console as i_console
@@ -63,30 +63,30 @@ class TestView(View):
 
 
 class NTAddInterfaceView(p_views.AddInterfaceView):
-    success_url = "horizon:project:network_topology:index"
-    failure_url = "horizon:project:network_topology:index"
+    success_url = "horizon:project:hybrid_cloud:index"
+    failure_url = "horizon:project:hybrid_cloud:index"
 
     def get_success_url(self):
-        return reverse("horizon:project:network_topology:index")
+        return reverse("horizon:project:hybrid_cloud:index")
 
     def get_context_data(self, **kwargs):
         context = super(NTAddInterfaceView, self).get_context_data(**kwargs)
-        context['form_url'] = 'horizon:project:network_topology:interface'
+        context['form_url'] = 'horizon:project:hybrid_cloud:interface'
         return context
 
 
 class NTCreateRouterView(r_views.CreateView):
     template_name = 'project/hybrid_cloud/create_router.html'
-    success_url = reverse_lazy("horizon:project:network_topology:index")
+    success_url = reverse_lazy("horizon:project:hybrid_cloud:index")
     page_title = _("Create a Router")
 
 
 class NTCreateNetwork(n_workflows.CreateNetwork):
     def get_success_url(self):
-        return reverse("horizon:project:network_topology:index")
+        return reverse("horizon:project:hybrid_cloud:index")
 
     def get_failure_url(self):
-        return reverse("horizon:project:network_topology:index")
+        return reverse("horizon:project:hybrid_cloud:index")
 
 
 class NTCreateNetworkView(n_views.CreateView):
@@ -94,7 +94,7 @@ class NTCreateNetworkView(n_views.CreateView):
 
 
 class NTLaunchInstance(i_workflows.LaunchInstance):
-    success_url = "horizon:project:network_topology:index"
+    success_url = "horizon:project:hybrid_cloud:index"
 
 
 class NTLaunchInstanceView(i_views.LaunchInstanceView):
@@ -103,10 +103,10 @@ class NTLaunchInstanceView(i_views.LaunchInstanceView):
 
 class NTCreateSubnet(s_workflows.CreateSubnet):
     def get_success_url(self):
-        return reverse("horizon:project:network_topology:index")
+        return reverse("horizon:project:hybrid_cloud:index")
 
     def get_failure_url(self):
-        return reverse("horizon:project:network_topology:index")
+        return reverse("horizon:project:hybrid_cloud:index")
 
 
 class NTCreateSubnetView(s_views.CreateView):

@@ -52,7 +52,21 @@ function Server(data) {
   this.ip_addresses = [];
 }
 
-horizon.network_topology = {
+function Channel(data) {
+  for (var key in data) {
+    if ({}.hasOwnProperty.call(data, key)) {
+      this[key] = data[key];
+    }
+  }
+  this.iconType = 'text';
+  this.icon = '\uf092';
+  this.networks = [];
+  this.ports = [];
+  this.type = 'channel';
+  this.whatever = [];
+}
+
+horizon.hybrid_topology = {
   model: null,
   fa_globe_glyph: '\uf0ac',
   fa_globe_glyph_width: 15,
@@ -69,6 +83,7 @@ horizon.network_topology = {
   balloon_portTmpl : null,
   balloon_netTmpl : null,
   balloon_instanceTmpl : null,
+  balloon_monitorTmpl : null,
   network_index: {},
   balloonID:null,
   reload_duration: 10000,
@@ -79,7 +94,7 @@ horizon.network_topology = {
   init:function() {
     var self = this;
     angular.element(self.svg_container).spin(horizon.conf.spinner_options.modal);
-    if (angular.element('#networktopology').length === 0) {
+    if (angular.element('#hybridtopology').length === 0) {
       return;
     }
 
@@ -88,6 +103,7 @@ horizon.network_topology = {
     self.data.routers = {};
     self.data.servers = {};
     self.data.ports = {};
+    self.data.channels = {};
 
     // Setup balloon popups
     self.balloonTmpl = Hogan.compile(angular.element('#balloon_container').html());
@@ -95,6 +111,8 @@ horizon.network_topology = {
     self.balloon_portTmpl = Hogan.compile(angular.element('#balloon_port').html());
     self.balloon_netTmpl = Hogan.compile(angular.element('#balloon_net').html());
     self.balloon_instanceTmpl = Hogan.compile(angular.element('#balloon_instance').html());
+
+    self.balloon_monitorTmpl = Hogan.compile(angular.element('#balloon_monitor').html());
 
     angular.element(document)
       .on('click', 'a.closeTopologyBalloon', function(e) {
@@ -163,11 +181,11 @@ horizon.network_topology = {
   // Get the json data about the current deployment
   retrieve_network_info: function(force_start) {
     var self = this;
-    if (angular.element('#networktopology').length === 0) {
+    if (angular.element('#hybridtopology').length === 0) {
       return;
     }
     angular.element.getJSON(
-      angular.element('#networktopology').data('networktopology') + '?' + angular.element.now(),
+      angular.element('#hybridtopology').data('hybridtopology') + '?' + angular.element.now(),
       function(data) {
         self.data_loaded = true;
         self.load_topology(data);
@@ -427,6 +445,8 @@ horizon.network_topology = {
             return 25;
           case Server.prototype:
             return 20;
+          case Channel.prototype:
+            return 40;
         }
       })
       .style('fill', 'white')
@@ -449,6 +469,8 @@ horizon.network_topology = {
                 return 'scale(1.5)';
               case Server.prototype:
                 return 'scale(1)';
+              case Channel.prototype:
+                return 'scale(2)';
             }
           });
         break;
@@ -487,6 +509,8 @@ horizon.network_topology = {
             return 'translate(30,3)';
           case Server.prototype:
             return 'translate(25,3)';
+          case Channel.prototype:
+            return 'translate(20,3)';
         }
       });
 
@@ -497,10 +521,12 @@ horizon.network_topology = {
         .style('font-size','20')
         .text('')
         .attr('transform', 'translate(26,38)');
+    } else if (data.data instanceof Channel || data.data instanceof Channel) {
+      //nodeEnter.append()
     }
 
     nodeEnter.on('click', function(d) {
-      self.show_balloon(d.data, d, angular.element(this));
+       self.show_balloon(d.data, d, angular.element(this));
     });
 
     // Highlight the links for currently selected node
@@ -699,6 +725,23 @@ horizon.network_topology = {
       }
       self.data.servers[server.id] = server;
     }
+
+    // Channels
+    _channelref = data.channels;
+    for (_l = 0, _channellen = _channelref.length; _l < _channellen; _l++) {
+      cha = _channelref[_l];
+      var channel = new Channel(cha);
+      if (!self.already_in_graph(self.data.channels, channel)) {
+        self.new_node(channel);
+        change = true;
+      } else {
+        obj = self.find_by_id(channel.id);
+        if (obj) {
+
+        }
+      }
+    }
+
 
     // Ports
     _portref = data.ports;
@@ -901,6 +944,7 @@ horizon.network_topology = {
     var portTmpl = self.balloon_portTmpl;
     var netTmpl = self.balloon_netTmpl;
     var instanceTmpl = self.balloon_instanceTmpl;
+    var monitorTmpl = self.balloon_monitorTmpl;
     var balloonID = 'bl_' + d.id;
     var ports = [];
     var subnets = [];
@@ -987,13 +1031,20 @@ horizon.network_topology = {
       });
     } else if (d instanceof Server) {
       htmlData.delete_label = gettext('Terminate Instance');
-      htmlData.view_details_label = gettext('View Instance Details');
+      htmlData.view_details_label = gettext('test test');
       htmlData.console_id = d.id;
       htmlData.ips = d.ip_addresses;
       htmlData.console = d.console;
+
+      if (typeof horizon.d3_line_chart !== 'undefined') {
+         horizon.d3_line_chart.init("div[data-chart-type='line_chart']",
+                                 {'auto_resize': true});
+      }
+
       html = balloonTmpl.render(htmlData,{
         table1:deviceTmpl,
-        table2:instanceTmpl
+        table2:instanceTmpl,
+	table3:monitorTmpl
       });
     } else if (d instanceof Network || d instanceof ExternalNetwork) {
       for (var s in subnets) {
