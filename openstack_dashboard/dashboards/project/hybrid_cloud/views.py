@@ -141,7 +141,7 @@ class NetworkDetailView(n_views.DetailView):
     template_name = 'project/hybrid_cloud/iframe.html'
 
 
-class NetworkTopologyView(views.HorizonTemplateView):
+class HybridTopologyView(views.HorizonTemplateView):
     template_name = 'project/hybrid_cloud/index.html'
     page_title = _("Network Topology")
 
@@ -160,7 +160,7 @@ class NetworkTopologyView(views.HorizonTemplateView):
         return available <= 0
 
     def get_context_data(self, **kwargs):
-        context = super(NetworkTopologyView, self).get_context_data(**kwargs)
+        context = super(HybridTopologyView, self).get_context_data(**kwargs)
         network_config = getattr(settings, 'OPENSTACK_NEUTRON_NETWORK', {})
 
         context['launch_instance_allowed'] = self._has_permission(

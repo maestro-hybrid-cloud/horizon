@@ -6,7 +6,7 @@ from openstack_dashboard.dashboards.project.hybrid_cloud import views
 
 urlpatterns = patterns(
     'openstack_dashboard.dashboards.project.hybrid_cloud.views',
-    url(r'^$', views.NetworkTopologyView.as_view(), name='index'),
+    url(r'^$', views.HybridTopologyView.as_view(), name='index'),
     url(r'^router$', views.RouterView.as_view(), name='router'),
     url(r'^network$', views.NetworkView.as_view(), name='network'),
     url(r'^instance$', views.InstanceView.as_view(), name='instance'),
