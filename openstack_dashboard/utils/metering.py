@@ -13,6 +13,8 @@
 import datetime
 import logging
 
+import json
+
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 import pytz
@@ -82,7 +84,7 @@ def calc_date_args(date_from, date_to, date_options):
     else:
         try:
             date_to = timezone.now()
-            date_from = date_to - datetime.timedelta(days=float(date_options))
+            date_from = date_to - datetime.timedelta(minutes=float(date_options))
         except Exception:
             raise ValueError(_("The time delta must be a number representing "
                                "the time span in days"))
@@ -128,7 +130,24 @@ def series_for_meter(request, aggregates, group_by, meter_id,
                 date = statistic.duration_end[:19]
                 value = float(getattr(statistic, stats_name))
                 point['data'].append({'x': date, 'y': value})
+	    
+
             series.append(point)
+	
+    newPoint = {
+	'unit':'%',
+	'name':'Threshold',
+	'meter':'meter',
+	'data':[]
+    }
+#    newPoint['data'].append({'x':'2015-11-07T15:10:47', 'y':2.0})
+#    newPoint['data'].append({'x':'2015-11-08T15:10:47', 'y':2.0})
+#    newPoint['data'].append({'x':'2015-11-09T15:10:47', 'y':2.0})
+#    newPoint['data'].append({'x':'2015-11-10T15:10:47', 'y':2.0})
+#    newPoint['data'].append({'x':'2015-11-11T15:10:47', 'y':2.0})
+#    newPoint['data'].append({'x':'2015-11-12T15:10:47', 'y':2.0})
+
+#    series.append(newPoint)
     return series
 
 
@@ -163,6 +182,14 @@ def normalize_series_by_unit(series):
                         d['y'], source_unit, target_unit, fmt=True)[0]
 
     return series
+
+
+def get_unit(meter, request):
+    sample_list = api.ceilometer.sample_list(request, meter, limit=1)
+    unit = ""
+    if sample_list:
+        unit = sample_list[0].counter_unit
+    return unit
 
 
 class ProjectAggregatesQuery(object):
@@ -209,6 +236,9 @@ class ProjectAggregatesQuery(object):
         return resources, unit
 
 
+
+
+
 class MeterQuery(ProjectAggregatesQuery):
     def __init__(self, *args, **kwargs):
         # pop filterfunc and add it later to self.
@@ -218,7 +248,39 @@ class MeterQuery(ProjectAggregatesQuery):
         # Resetting the tenant based filter set in base class
         self.queries = None
 
-    def query(self, meter):
+
+    def queryByInstanceId(self, meter, date_from, date_to, instanceId, additional_query=[]):
+        if date_from:
+            additional_query.append({'field': 'timestamp',
+                                     'op': 'ge',
+                                     'value': date_from})
+        if date_to:
+            additional_query.append({'field': 'timestamp',
+                                     'op': 'le',
+                                     'value': date_to})
+	self.additional_query = additional_query
+        query = [{
+	    "field":"resource_id",
+	    "op":"eq",
+            "value": instanceId}]
+        self.queries = query
+
+        meter_list = [m for m in api.ceilometer.meter_list(self.request)
+                      if m.name == meter]
+
+        unit = ""
+        if len(meter_list) > 0:
+            unit = meter_list[0].unit
+
+        ceilometer_usage = api.ceilometer.CeilometerUsage(self.request)
+        resources = ceilometer_usage.resources_with_statistics(
+            self.queries, [meter],
+            period=self.period,
+            stats_attr=None,
+            additional_query=self.additional_query)
+
+        return resources, unit
+    def query(self, meter, group):
         def filter_by_meter_name(resource):
             """Function for filtering of the list of resources.
 
@@ -237,6 +299,8 @@ class MeterQuery(ProjectAggregatesQuery):
         unit = ""
         if len(meter_list) > 0:
             unit = meter_list[0].unit
+	
+	self.quries = [{"resource_id": group}]	
 
         ceilometer_usage = api.ceilometer.CeilometerUsage(self.request)
         resources = ceilometer_usage.resources_with_statistics(
@@ -247,3 +311,4 @@ class MeterQuery(ProjectAggregatesQuery):
             filter_func=filter_by_meter_name)
 
         return resources, unit
+

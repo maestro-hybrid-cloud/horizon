@@ -353,6 +353,9 @@ horizon.d3_line_chart = {
           self.height = auto_height;
         }
       }
+     
+//      self.width = 401;i
+//      self.height = 251;
 
       /* Setting new sizes. It is important when resizing a window.*/
       $(self.html_element).css('height', self.height);
@@ -376,7 +379,7 @@ horizon.d3_line_chart = {
      */
     self.refresh = function (){
       var self = this;
-
+console.log('refresh');
       self.start_loading();
       horizon.ajax.queue({
         url: self.final_url,
@@ -628,10 +631,11 @@ horizon.d3_line_chart = {
    */
   init: function(selector, settings) {
     var self = this;
+console.log('aaaa');
+setInterval(function(){ console.log("Hello"); }, 3000);
     $(selector).each(function() {
       self.refresh(this, settings);
     });
-
     if (settings !== undefined && settings.auto_resize) {
       /*
         I want to refresh chart on resize of the window, but only
@@ -677,7 +681,8 @@ horizon.d3_line_chart = {
       via web sockets
       this.charts.add_or_update(chart)
     */
-    chart.refresh();
+console.log('qwer');
+setInterval(    chart.refresh(), 3000);
   },
 
   /**

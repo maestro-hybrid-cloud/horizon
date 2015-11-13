@@ -69,6 +69,7 @@ horizon.network_topology = {
   balloon_portTmpl : null,
   balloon_netTmpl : null,
   balloon_instanceTmpl : null,
+  balloon_monitorTmpl : null,
   network_index: {},
   balloonID:null,
   reload_duration: 10000,
@@ -95,6 +96,8 @@ horizon.network_topology = {
     self.balloon_portTmpl = Hogan.compile(angular.element('#balloon_port').html());
     self.balloon_netTmpl = Hogan.compile(angular.element('#balloon_net').html());
     self.balloon_instanceTmpl = Hogan.compile(angular.element('#balloon_instance').html());
+
+    self.balloon_monitorTmpl = Hogan.compile(angular.element('#balloon_monitor').html());
 
     angular.element(document)
       .on('click', 'a.closeTopologyBalloon', function(e) {
@@ -500,7 +503,7 @@ horizon.network_topology = {
     }
 
     nodeEnter.on('click', function(d) {
-      self.show_balloon(d.data, d, angular.element(this));
+       self.show_balloon(d.data, d, angular.element(this));
     });
 
     // Highlight the links for currently selected node
@@ -901,6 +904,7 @@ horizon.network_topology = {
     var portTmpl = self.balloon_portTmpl;
     var netTmpl = self.balloon_netTmpl;
     var instanceTmpl = self.balloon_instanceTmpl;
+    var monitorTmpl = self.balloon_monitorTmpl;
     var balloonID = 'bl_' + d.id;
     var ports = [];
     var subnets = [];
@@ -987,13 +991,20 @@ horizon.network_topology = {
       });
     } else if (d instanceof Server) {
       htmlData.delete_label = gettext('Terminate Instance');
-      htmlData.view_details_label = gettext('View Instance Details');
+      htmlData.view_details_label = gettext('test test');
       htmlData.console_id = d.id;
       htmlData.ips = d.ip_addresses;
       htmlData.console = d.console;
+
+      if (typeof horizon.d3_line_chart !== 'undefined') {
+         horizon.d3_line_chart.init("div[data-chart-type='line_chart']",
+                                 {'auto_resize': true});
+      }
+
       html = balloonTmpl.render(htmlData,{
         table1:deviceTmpl,
-        table2:instanceTmpl
+        table2:instanceTmpl,
+	table3:monitorTmpl
       });
     } else if (d instanceof Network || d instanceof ExternalNetwork) {
       for (var s in subnets) {

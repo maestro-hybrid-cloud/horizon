@@ -14,6 +14,21 @@
 {% include "project/network_topology/client_side/_balloon_port.html" %}
 {% include "project/network_topology/client_side/_balloon_net.html" %}
 {% include "project/network_topology/client_side/_balloon_instance.html" %}
+{% include "project/network_topology/client_side/_balloon_monitor.html" %}
+
+<!--
+<div class="info row detail">
+   <div class="col-sm-9 chart_container">
+     <div id="line_chart"
+          data-chart-type="line_chart"
+          data-url="{% url 'horizon:project:network_topology:samples'%}?instance_id=40768ffb-f90a-4ec9-9025-579730ef5e91"
+          data-form-selector='#linechart_general_form'>
+     </div>
+   </div>
+</div>
+-->
+
+
 <div class='description'>
   {% blocktrans %}
 Resize the canvas by scrolling up/down with your mouse/trackpad on the topology.

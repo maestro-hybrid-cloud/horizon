@@ -47,7 +47,7 @@ class ObjectStorePanels(horizon.PanelGroup):
 class OrchestrationPanels(horizon.PanelGroup):
     slug = "orchestration"
     name = _("Orchestration")
-    panels = ('stacks',
+    panels = ('stacks', 'hybrid_cloud',
               'stacks.resource_types',)
 
 
@@ -73,10 +73,10 @@ class DataProcessingPanels(horizon.PanelGroup):
               'data_processing.data_plugins',)
 
 
-class HybridCloudPanels(horizon.PanelGroup):
-    slug = "hybrid_cloud"
-    name = _("HybridCloud")
-    panels = ('hybrid_cloud',)
+#class HybridCloudPanels(horizon.PanelGroup):
+#    slug = "hybrid_cloud"
+#    name = _("HybridCloud")
+#    panels = ('hybrid_cloud',)
 
 
 class Project(horizon.Dashboard):
@@ -85,7 +85,7 @@ class Project(horizon.Dashboard):
     panels = (
         BasePanels,
         NetworkPanels,
-	HybridCloudPanels,
+#	HybridCloudPanels,
         ObjectStorePanels,
         OrchestrationPanels,
         DatabasePanels,
