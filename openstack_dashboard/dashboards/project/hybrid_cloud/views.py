@@ -330,53 +330,35 @@ class JSONView(View):
         return ports
 
     def _get_stacks(self, request):
+        heat_stacks = []
         try:
-            stacks, self._more, self._prev = api.heat.stacks_list(self.request)
+            heat_stacks, self._more, self._prev = api.heat.stacks_list(self.request)
         except Exception:
             self._prev = False
             self._more = False
             msg = _('Unable to retrieve stack list.')
             exceptions.handle(self.request, msg)
 
-        return stacks
 
-    def _get_resources(self, request):
-        try:
-            heat_resources = api.heat.resources_list(request, "P3");
-        except Exception:
+
+        stacks = []
+        for stack in heat_stacks:
             heat_resources = []
-
-        resources = []
-        for resource in heat_resources:
-            obj = {'name' : 'test' }
-
-
-        try:
-            neutron_networks = api.neutron.network_list_for_tenant(
-                request,
-                request.user.tenant_id)
-        except Exception:
-            neutron_networks = []
-        networks = []
-        for network in neutron_networks:
-            obj = {'name': network.name,
-                   'id': network.id,
-                   'subnets': [{'id': subnet.id,
-                                'cidr': subnet.cidr}
-                               for subnet in network.subnets],
-                   'status': network.status,
-                   'router:external': network['router:external']}
-            self.add_resource_url('horizon:project:networks:subnets:detail',
-                                  obj['subnets'])
-            networks.append(obj)
-
-    def _get_channels(self, request):
-        try:
-            vpn_channels = api.heat.stacks_list(request)
-        except Exception:
-            vpn_channels = []
-        return vpn_channels
-
+            try:
+                heat_resources = api.heat.resources_list(self.request, stack.stack_name)
+            except Exception:
+                msg = _('Unable to retrieve resource list.')
+                exceptions.handle(self.request, msg)
+            obj = {'name': stack.stack_name,
+                   'id': stack.id,
+                   'status': stack.stack_status,
+                   'resources': [{'name': resource.resource_name,
+                                  'id': resource.physical_resource_id,
+                                  'type': resource.resource_type,
+                                  'status': resource.resource_status
+                                  } for resource in heat_resources]}
+            stacks.append(obj)
+        return stacks
 
     def _get_tenants(self, request):
         tenants = []
@@ -407,18 +389,33 @@ class JSONView(View):
             messages.info(self.request, msg)
         return tenants
 
+    def _get_regional_tenants(self, request):
+        tenants = []
+        regional_tenants = []
+        try:
+            tenants, has_more = api.keystone.tenant_list(request)
+        except Exception:
+            tenants = []
+            exceptions.handle(self.request, _("Unable to retrieve project list."))
+        for tenant in tenants:
+            obj = {'name': tenant.name,
+                   'id': tenant.id,
+                   'description': tenant.description
+                   }
+            regional_tenants.append(obj)
+
+        return regional_tenants
+
+
     def _get_tenant_networks(self, request):
         tenants = self._get_tenants(request)
-
         networks = []
-
         for t in tenants:
             try:
                 neutron_networks = api.neutron.network_list_for_tenant(
                     request, t.id)
             except Exception:
                 neutron_networks = []
-            networks = []
             for network in neutron_networks:
                 obj = {'name': network.name,
                        'id': network.id,
@@ -430,15 +427,7 @@ class JSONView(View):
                 self.add_resource_url('horizon:project:networks:subnets:detail',
                                       obj['subnets'])
                 networks.append(obj)
-
         return networks
-
-
-    #
-    # def _get_resources(self, request):
-    #     try:
-    #         stack = api.heat.resources_list(request)
-
 
     def _prepare_gateway_ports(self, routers, ports):
         # user can't see port on external network. so we are
@@ -466,9 +455,8 @@ class JSONView(View):
                 'networks': self._get_networks(request),
                 'ports': self._get_ports(request),
                 'routers': self._get_routers(request),
-                'channels': self._get_channels(request),
                 'stacks': self._get_stacks(request),
-                'resources': self._get_resources(request),
+                'tenants': self._get_regional_tenants(request),
                 'tenant_networks': self._get_tenant_networks(request)
                 }
         self._prepare_gateway_ports(data['routers'], data['ports'])
