@@ -18,6 +18,8 @@
 
 import json
 
+import django.views
+
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.core.urlresolvers import reverse_lazy
@@ -60,6 +62,22 @@ from openstack_dashboard.dashboards.project.routers.ports import\
     views as p_views
 from openstack_dashboard.dashboards.project.routers import\
     views as r_views
+
+from openstack_dashboard.utils import metering as metering_utils
+
+
+
+class NTAddInterfaceView(p_views.AddInterfaceView):
+    success_url = "horizon:project:network_topology:index"
+    failure_url = "horizon:project:network_topology:index"
+
+    def get_success_url(self):
+        return reverse("horizon:project:network_topology:index")
+
+    def get_context_data(self, **kwargs):
+        context = super(NTAddInterfaceView, self).get_context_data(**kwargs)
+        context['form_url'] = 'horizon:project:network_topology:interface'
+        return context
 
 
 class NTAddInterfaceView(p_views.AddInterfaceView):
@@ -156,7 +174,7 @@ class NetworkTopologyView(views.HorizonTemplateView):
 
     def _quota_exceeded(self, quota):
         usages = quotas.tenant_quota_usages(self.request)
-        available = usages.get(quota, {}).get('available', 1)
+        available = usages[quota]['available']
         return available <= 0
 
     def get_context_data(self, **kwargs):
@@ -177,6 +195,8 @@ class NetworkTopologyView(views.HorizonTemplateView):
             settings, 'CONSOLE_TYPE', 'AUTO')
         context['show_ng_launch'] = getattr(
             settings, 'LAUNCH_INSTANCE_NG_ENABLED', False)
+        context['show_legacy_launch'] = getattr(
+            settings, 'LAUNCH_INSTANCE_LEGACY_ENABLED', True)
         return context
 
 
@@ -374,3 +394,33 @@ class JSONView(View):
 
         request.session['services_region'] = next
         return HttpResponse(json_string, content_type='text/json')
+
+
+class SamplesView(django.views.generic.TemplateView):
+    def get(self, request, *args, **kwargs):
+
+        meter = 'cpu_util'
+        meter_name = meter.replace(".", "_")
+	date_options = 7
+	date_from = None
+	date_to = None
+	stats_attr = 'avg'
+
+        try:
+            date_from, date_to = metering_utils.calc_date_args(date_from,
+                                                               date_to,
+                                                               date_options)
+        except Exception:
+            exceptions.handle(self.request, _('Dates cannot be recognized.'))
+
+	query = metering_utils.MeterQuery(request, date_from, date_to, 3600 * 24)
+        resources, unit = query.queryByInstanceId(meter, request.GET.get('instance_id'))
+        series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'), meter, meter_name, 'avg', unit)
+        series = metering_utils.normalize_series_by_unit(series)
+        ret = {'series': series, 'settings': {}}
+
+        return HttpResponse(json.dumps(ret), content_type='application/json')
+
+
+
+

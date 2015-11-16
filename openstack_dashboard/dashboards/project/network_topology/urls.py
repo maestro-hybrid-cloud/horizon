@@ -44,4 +44,5 @@ urlpatterns = patterns(
         name='createnetwork'),
     url(r'^createrouter$', views.NTCreateRouterView.as_view(),
         name='createrouter'),
+    url(r'^samples$', views.SamplesView.as_view(), name='samples')
 )
