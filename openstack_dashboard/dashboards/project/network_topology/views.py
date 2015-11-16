@@ -373,27 +373,18 @@ class JSONView(View):
         }
 
     def get(self, request, *args, **kwargs):
-        regions = self._get_region_list(request)
-        region_list = regions['available_regions']
-
-        current = region_list.index(regions['current_region'])
-        next = regions['available_regions'][0]
-        if current < len(region_list):
-            for i in range(current+1)[::-1]:
-                del region_list[i]
-
-            if len(region_list) > 0:
-                next = region_list[0]
-
         data = {'servers': self._get_servers(request),
                 'networks': self._get_networks(request),
                 'ports': self._get_ports(request),
-                'routers': self._get_routers(request)}
+                'routers': self._get_routers(request),
+                'stacks': self._get_stacks(request),
+                'tenants': self._get_regional_tenants(request),
+                'tenant_networks': self._get_tenant_networks(request)
+                }
         self._prepare_gateway_ports(data['routers'], data['ports'])
         json_string = json.dumps(data, ensure_ascii=False)
-
-        request.session['services_region'] = next
         return HttpResponse(json_string, content_type='text/json')
+
 
 
 class SamplesView(django.views.generic.TemplateView):
