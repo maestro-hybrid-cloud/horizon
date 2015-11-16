@@ -138,8 +138,7 @@ horizon.hybrid_topology = {
     self.balloon_portTmpl = Hogan.compile(angular.element('#balloon_port').html());
     self.balloon_netTmpl = Hogan.compile(angular.element('#balloon_net').html());
     self.balloon_instanceTmpl = Hogan.compile(angular.element('#balloon_instance').html());
-
-    //self.balloon_monitorTmpl = Hogan.compile(angular.element('#balloon_monitor').html());
+    self.balloon_monitorTmpl = Hogan.compile(angular.element('#balloon_monitor').html());
 
     angular.element(document)
       .on('click', 'a.closeTopologyBalloon', function(e) {
