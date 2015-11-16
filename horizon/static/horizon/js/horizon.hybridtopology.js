@@ -52,7 +52,46 @@ function Server(data) {
   this.ip_addresses = [];
 }
 
-horizon.network_topology = {
+function Stack(data) {
+  for (var key in data) {
+    if ({}.hasOwnProperty.call(data, key)) {
+      this[key] = data[key];
+    }
+  }
+  this.iconType = 'text';
+  this.icon = '\uf00b';
+  this.networks = [];
+  this.ports = [];
+  this.type = 'stack';
+}
+
+function Connection(data) {
+  for (var key in data) {
+    if ({}.hasOwnProperty.call(data, key)) {
+      this[key] = data[key];
+    }
+  }
+  this.iconType = 'text';
+  this.icon = '\uf085';
+  this.networks = [];
+  this.ports = [];
+  this.type = 'connection';
+}
+
+function Resource(data) {
+  for (var key in data) {
+    if ({}.hasOwnProperty.call(data, key)) {
+      this[key] = data[key];
+    }
+  }
+  this.iconType = 'text';
+  this.icon = '\uf042';
+  this.networks = [];
+  this.ports = [];
+  this.type = 'resource';
+}
+
+horizon.hybrid_topology = {
   model: null,
   fa_globe_glyph: '\uf0ac',
   fa_globe_glyph_width: 15,
@@ -69,6 +108,7 @@ horizon.network_topology = {
   balloon_portTmpl : null,
   balloon_netTmpl : null,
   balloon_instanceTmpl : null,
+  balloon_monitorTmpl : null,
   network_index: {},
   balloonID:null,
   reload_duration: 10000,
@@ -79,7 +119,7 @@ horizon.network_topology = {
   init:function() {
     var self = this;
     angular.element(self.svg_container).spin(horizon.conf.spinner_options.modal);
-    if (angular.element('#networktopology').length === 0) {
+    if (angular.element('#hybridtopology').length === 0) {
       return;
     }
 
@@ -88,6 +128,11 @@ horizon.network_topology = {
     self.data.routers = {};
     self.data.servers = {};
     self.data.ports = {};
+    self.data.stacks = {};
+    self.data.connections = {};
+    self.data.resources = {};
+    self.data.tenants = {};
+    self.data.tenant_networks = {};
 
     // Setup balloon popups
     self.balloonTmpl = Hogan.compile(angular.element('#balloon_container').html());
@@ -95,6 +140,8 @@ horizon.network_topology = {
     self.balloon_portTmpl = Hogan.compile(angular.element('#balloon_port').html());
     self.balloon_netTmpl = Hogan.compile(angular.element('#balloon_net').html());
     self.balloon_instanceTmpl = Hogan.compile(angular.element('#balloon_instance').html());
+
+    //self.balloon_monitorTmpl = Hogan.compile(angular.element('#balloon_monitor').html());
 
     angular.element(document)
       .on('click', 'a.closeTopologyBalloon', function(e) {
@@ -149,7 +196,7 @@ horizon.network_topology = {
           self.retrieve_network_info();
           setTimeout(function() {
             self.previous_message = null;
-          },10000);
+          },60000);
         }
       });
 
@@ -163,11 +210,11 @@ horizon.network_topology = {
   // Get the json data about the current deployment
   retrieve_network_info: function(force_start) {
     var self = this;
-    if (angular.element('#networktopology').length === 0) {
+    if (angular.element('#hybridtopology').length === 0) {
       return;
     }
     angular.element.getJSON(
-      angular.element('#networktopology').data('networktopology') + '?' + angular.element.now(),
+      angular.element('#hybridtopology').data('hybridtopology') + '?' + angular.element.now(),
       function(data) {
         self.data_loaded = true;
         self.load_topology(data);
@@ -409,6 +456,8 @@ horizon.network_topology = {
     }
     self.nodes.push(data);
 
+    console.log("Inserting " + Object.getPrototypeOf(data))
+
     var node = self.vis.selectAll('g.node').data(self.nodes);
     var nodeEnter = node.enter().append('g')
       .attr('class', 'node')
@@ -426,6 +475,12 @@ horizon.network_topology = {
           case Router.prototype:
             return 25;
           case Server.prototype:
+            return 20;
+          case Stack.prototype:
+            return 25;
+          case Connection.prototype:
+            return 30;
+          case Resource.prototype:
             return 20;
         }
       })
@@ -448,6 +503,12 @@ horizon.network_topology = {
               case Network.prototype:
                 return 'scale(1.5)';
               case Server.prototype:
+                return 'scale(1)';
+              case Stack.prototype:
+                return 'scale(2)';
+              case Connection.prototype:
+                return 'scale(2)';
+              case Resource.prototype:
                 return 'scale(1)';
             }
           });
@@ -487,6 +548,12 @@ horizon.network_topology = {
             return 'translate(30,3)';
           case Server.prototype:
             return 'translate(25,3)';
+          case Stack.prototype:
+            return 'translate(30,3)';
+          case Connection.prototype:
+            return 'translate(30,3)';
+          case Resource.prototype:
+            return 'translate(30,3)';
         }
       });
 
@@ -500,7 +567,7 @@ horizon.network_topology = {
     }
 
     nodeEnter.on('click', function(d) {
-      self.show_balloon(d.data, d, angular.element(this));
+       self.show_balloon(d.data, d, angular.element(this));
     });
 
     // Highlight the links for currently selected node
@@ -628,8 +695,24 @@ horizon.network_topology = {
       };
     };
 
+
+    _tenant_ref = data.tenants;
+    for (_i = 0, _tenentlen = _tenant_ref.length; _i < _tenentlen; _i++) {
+      tenant = _tenant_ref[_i];
+      console.log(tenant)
+    }
+
+
+    _tenet_ref = data.tenant_networks;
+    for (_i = 0, _tenetlen = _tenet_ref.length; _i < _tenetlen; _i++) {
+      tenet = _tenet_ref[_i];
+      console.log(tenet)
+    }
+
+
     // Networks
     _netref = data.networks;
+    console.log("Network : " + data.networks)
     for (_i = 0, _netlen = _netref.length; _i < _netlen; _i++) {
       net = _netref[_i];
       var network = null;
@@ -655,6 +738,7 @@ horizon.network_topology = {
 
     // Routers
     _rouref = data.routers;
+    console.log("Routers : " + data.routers)
     for (_j = 0, _roulen = _rouref.length; _j < _roulen; _j++) {
       rou = _rouref[_j];
       var router = new Router(rou);
@@ -676,6 +760,7 @@ horizon.network_topology = {
 
     // Servers
     _serref = data.servers;
+    console.log("Servers : " + data.servers)
     for (_k = 0, _serlen = _serref.length; _k < _serlen; _k++) {
       ser = _serref[_k];
       var server = new Server(ser);
@@ -700,6 +785,71 @@ horizon.network_topology = {
       self.data.servers[server.id] = server;
     }
 
+    // Stacks
+    _staref = data.stacks;
+    console.log("Stacks : " + data.stacks)
+    for (_k = 0, _stalen = _staref.length; _k < _stalen; _k++) {
+      sta = _staref[_k];
+      var stack = new Stack(sta);
+      if (!self.already_in_graph(self.data.stacks, stack)) {
+        self.new_node(stack);
+        change = true;
+      } else {
+        obj = self.find_by_id(stack.id);
+        if (obj) {
+          //
+          //// Keep networks list
+          //server.networks = obj.data.networks;
+          //// Keep ip address list
+          //server.ip_addresses = obj.data.ip_addresses;
+          obj.data = stack;
+        } else if (self.data.stacks[stack.id] !== undefined) {
+          //  stack.networks = self.data.stacks[server.id].networks;
+          //  stack.ip_addresses = self.data.stacks[server.id].ip_addresses;
+        }
+      }
+      self.data.stacks[stack.id] = stack;
+
+
+      _resref = stack.resources;
+      console.log("Resources : " + data.resources)
+      for (_k = 0, _reslen = _resref.length; _k < _reslen; _k++) {
+        res = _resref[_k];
+        var resource = null;
+
+        if (res['type'] === 'VPNConnection') {
+          resource = new Connection(res);
+        } else {
+          resource = new Resource(res);
+        }
+
+        if (!self.already_in_graph(self.data.resources, resource)) {
+          self.new_node(resource);
+          change = true;
+        } else {
+          obj = self.find_by_id(resource.id);
+          if (obj) {
+            //
+            //// Keep networks list
+            //server.networks = obj.data.networks;
+            //// Keep ip address list
+            //server.ip_addresses = obj.data.ip_addresses;
+            obj.data = resource;
+          } else if (self.data.resources[resource.id] !== undefined) {
+            //  resource.networks = self.data.resources[server.id].networks;
+            //  resource.ip_addresses = self.data.resources[server.id].ip_addresses;
+          }
+        }
+        self.data.resources[resource.id] = resource;
+      }
+
+    }
+
+
+    
+
+
+
     // Ports
     _portref = data.ports;
     for (_l = 0, _portlen = _portref.length; _l < _portlen; _l++) {
@@ -723,7 +873,7 @@ horizon.network_topology = {
                 self.data.servers[device.data.id].networks = device.data.networks;
                 self.data.servers[device.data.id].ip_addresses = device.data.ip_addresses;
                 self.removeNode(self.data.servers[port.device_id]);
-                vmCount = Number(self.vis.selectAll('.vmCount').filter(filterNode(_network.data))[0][0].textContent);
+                vmCount = Number(self.vis.selectAll('.vmCount').filter(filterNode(_network.data))[0][0].textContent)
                 self.vis.selectAll('.vmCount').filter(filterNode(_network.data))[0][0].textContent = vmCount + 1;
                 continue;
               }
@@ -749,7 +899,7 @@ horizon.network_topology = {
             }
             self.new_node(server);
             // decrease collapsed vm count on network
-            vmCount = Number(self.vis.selectAll('.vmCount').filter(filterNode(server.networks[0]))[0][0].textContent);
+            vmCount = Number(self.vis.selectAll('.vmCount').filter(filterNode(server.networks[0]))[0][0].textContent)
             if (vmCount == 1) {
               self.vis.selectAll('.vmCount').filter(filterNode(server.networks[0]))[0][0].textContent = '';
             } else {
@@ -758,7 +908,7 @@ horizon.network_topology = {
             // Add back in first network link
             self.new_link(self.find_by_id(port.device_id), self.find_by_id(server.networks[0].id));
             // Add new link
-            self.new_link(self.find_by_id(port.device_id), self.find_by_id(port.network_id));
+            self.new_link(self.find_by_id(port.device_id), self.find_by_id(port.network_id))
             change = true;
           }
         }
@@ -837,12 +987,6 @@ horizon.network_topology = {
     return this.vis.selectAll('line.link').data(this.links).exit().remove();
   },
 
-  delete_device: function(type, deviceId) {
-    var self = this;
-    var message = {id:deviceId};
-    self.post_message(deviceId,type,message);
-    self.deleting_device = {type: type, deviceId: deviceId};
-  },
 
   remove_node_on_delete: function () {
     var self = this;
@@ -861,6 +1005,12 @@ horizon.network_topology = {
         break;
     }
     self.delete_balloon();
+  },
+  delete_device: function(type, deviceId) {
+    var self = this;
+    var message = {id:deviceId};
+    self.post_message(deviceId,type,message);
+    self.deleting_device = {type: type, deviceId: deviceId};
   },
 
   delete_port: function(routerId, portId, networkId) {
@@ -901,6 +1051,7 @@ horizon.network_topology = {
     var portTmpl = self.balloon_portTmpl;
     var netTmpl = self.balloon_netTmpl;
     var instanceTmpl = self.balloon_instanceTmpl;
+    var monitorTmpl = self.balloon_monitorTmpl;
     var balloonID = 'bl_' + d.id;
     var ports = [];
     var subnets = [];
@@ -987,13 +1138,20 @@ horizon.network_topology = {
       });
     } else if (d instanceof Server) {
       htmlData.delete_label = gettext('Terminate Instance');
-      htmlData.view_details_label = gettext('View Instance Details');
+      htmlData.view_details_label = gettext('test test');
       htmlData.console_id = d.id;
       htmlData.ips = d.ip_addresses;
       htmlData.console = d.console;
+
+      if (typeof horizon.d3_line_chart !== 'undefined') {
+         horizon.d3_line_chart.init("div[data-chart-type='line_chart']",
+                                 {'auto_resize': true});
+      }
+
       html = balloonTmpl.render(htmlData,{
         table1:deviceTmpl,
-        table2:instanceTmpl
+        table2:instanceTmpl,
+	table3:monitorTmpl
       });
     } else if (d instanceof Network || d instanceof ExternalNetwork) {
       for (var s in subnets) {
