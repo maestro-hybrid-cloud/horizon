@@ -24,6 +24,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.http import HttpResponse  # noqa
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic import View  # noqa
+import django.views
 
 from horizon import exceptions
 from horizon import views
@@ -59,6 +60,7 @@ from openstack_dashboard.dashboards.project.routers.ports import\
     views as p_views
 from openstack_dashboard.dashboards.project.routers import\
     views as r_views
+from openstack_dashboard.utils import metering as metering_utils
 
 class TestView(View):
     template_name = 'project/'
@@ -332,7 +334,7 @@ class JSONView(View):
     def _get_stacks(self, request):
         heat_stacks = []
         try:
-            heat_stacks, self._more, self._prev = api.heat.stacks_list(self.request)
+            heat_stacks, self._more, self._prev = api.heat.stacks_list(self.request, 3)
         except Exception:
             self._prev = False
             self._more = False
@@ -353,8 +355,8 @@ class JSONView(View):
                    'resources': [{'name': resource.resource_name,
                                   'id': resource.physical_resource_id,
                                   'type': resource.resource_type,
-                                  'status': resource.resource_status
-                                  } for resource in heat_resources]}
+                                  'status': resource.resource_status}
+                                 for resource in heat_resources]}
             stacks.append(obj)
         return stacks
 
@@ -401,9 +403,35 @@ class JSONView(View):
         data = {'servers': self._get_servers(request),
                 'networks': self._get_networks(request),
                 'ports': self._get_ports(request),
-                'routers': self._get_routers(request)}
+                'routers': self._get_routers(request),
+                'stacks': self._get_stacks(request)}
         self._prepare_gateway_ports(data['routers'], data['ports'])
         json_string = json.dumps(data, ensure_ascii=False)
 
         request.session['services_region'] = next
         return HttpResponse(json_string, content_type='text/json')
+
+    class SamplesView(django.views.generic.TemplateView):
+        def get(self, request, *args, **kwargs):
+
+            meter = 'cpu_util'
+            meter_name = meter.replace(".", "_")
+            date_options = 7
+            date_from = None
+            date_to = None
+            stats_attr = 'avg'
+
+            try:
+                date_from, date_to = metering_utils.calc_date_args(date_from,
+                                                                   date_to,
+                                                                   date_options)
+            except Exception:
+                exceptions.handle(self.request, _('Dates cannot be recognized.'))
+
+            query = metering_utils.MeterQuery(request, date_from, date_to, 3600 * 24)
+            resources, unit = query.filter_by_instance_id(meter, date_from, date_to, request.GET.get('instance_id'))
+            series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'), meter, meter_name, 'avg', unit)
+            series = metering_utils.normalize_series_by_unit(series)
+            ret = {'series': series, 'settings': {}}
+
+            return HttpResponse(json.dumps(ret), content_type='application/json')

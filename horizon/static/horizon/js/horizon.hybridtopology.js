@@ -1112,7 +1112,7 @@ horizon.hybrid_topology = {
       });
     } else if (d instanceof Server) {
       htmlData.delete_label = gettext('Terminate Instance');
-      htmlData.view_details_label = gettext('test test');
+      htmlData.view_details_label = gettext('View Instance Details');
       htmlData.console_id = d.id;
       htmlData.ips = d.ip_addresses;
       htmlData.console = d.console;
@@ -1125,7 +1125,7 @@ horizon.hybrid_topology = {
       html = balloonTmpl.render(htmlData,{
         table1:deviceTmpl,
         table2:instanceTmpl,
-	table3:monitorTmpl
+	    table3:monitorTmpl
       });
     } else if (d instanceof Network || d instanceof ExternalNetwork) {
       for (var s in subnets) {

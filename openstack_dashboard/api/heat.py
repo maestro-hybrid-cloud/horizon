@@ -114,8 +114,8 @@ def events_list(request, stack_name):
     return heatclient(request).events.list(stack_name)
 
 
-def resources_list(request, stack_name):
-    return heatclient(request).resources.list(stack_name)
+def resources_list(request, stack_name, nested_depth=0):
+    return heatclient(request).resources.list(stack_name, nested_depth)
 
 
 def resource_get(request, stack_id, resource_name):

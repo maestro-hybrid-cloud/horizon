@@ -27,4 +27,5 @@ urlpatterns = patterns(
         name='createrouter'),
     url(r'^testview$', views.TestView.as_view(),
         name='testview'),
+    url(r'^samples$', views.SamplesView.as_view(), name='samples')
 )

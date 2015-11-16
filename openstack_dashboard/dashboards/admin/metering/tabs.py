@@ -10,8 +10,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import logging
-import json
 
 from django.utils.translation import ugettext_lazy as _
 
@@ -20,14 +18,12 @@ from horizon import messages
 from horizon import tabs
 
 from openstack_dashboard.api import ceilometer
-from openstack_dashboard.api import nova
 
 from openstack_dashboard.dashboards.admin.metering import \
     tables as metering_tables
 
 from openstack_dashboard.utils import metering
 
-LOG = logging.getLogger(__name__)
 
 class GlobalStatsTab(tabs.TableTab):
     name = _("Stats")
@@ -42,34 +38,6 @@ class GlobalStatsTab(tabs.TableTab):
             msg = _("There are no meters defined yet.")
             messages.warning(request, msg)
 
-#        instance_list = nova.server_list(self.request)
-#	instanceIds = []
-	
-#	for instances in instance_list:
-#		instanceIds.append(instances.id)
-#		for instance in instances:
-#			instanceIds.append(instance.id)
-
-#        LOG.debug('%s', instance_list)
-
-
-	instances = []
-        try:
-            servers, has_more = nova.server_list(request)
-        except Exception:
-            servers = []
-            exceptions.handle(request,
-                              _('Unable to retrieve instances list.'))
-
-        if len(servers) == 0:
-            return
-
-        for m in servers:
-#            instances.append((m.id, m.name))
-		instances.append(m.id)
-
-
-
         context = {
             'nova_meters': meters.list_nova(),
             'neutron_meters': meters.list_neutron(),
@@ -78,7 +46,6 @@ class GlobalStatsTab(tabs.TableTab):
             'swift_meters': meters.list_swift(),
             'kwapi_meters': meters.list_kwapi(),
             'ipmi_meters': meters.list_ipmi(),
-	    'instance_list': instances
         }
 
         return context
@@ -110,17 +77,14 @@ class UsageReportTab(tabs.TableTab):
         try:
             date_from, date_to = metering.calc_date_args(date_from,
                                                          date_to,
-							 date_options)
-#            date_from, date_to = metering.calc_date_args("2015-11-11",
-#                                                         "2015-11-12",
-#                                                         10)                            
+                                                         date_options)
         except Exception:
             exceptions.handle(self.request, _('Dates cannot be recognized.'))
         try:
             project_aggregates = metering.ProjectAggregatesQuery(self.request,
                                                                  date_from,
                                                                  date_to,
-                                                                 60*60*24 )
+                                                                 3600 * 24)
         except Exception:
             exceptions.handle(self.request,
                               _('Unable to retrieve project list.'))

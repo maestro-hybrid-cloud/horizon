@@ -65,7 +65,7 @@ class SamplesView(django.views.generic.TemplateView):
         try:
             date_from, date_to = metering_utils.calc_date_args(date_from,
                                                                date_to,
-                                                               100)
+                                                               date_options)
         except Exception:
             exceptions.handle(self.request, _('Dates cannot be recognized.'))
 
@@ -73,13 +73,12 @@ class SamplesView(django.views.generic.TemplateView):
             query = metering_utils.ProjectAggregatesQuery(request,
                                                           date_from,
                                                           date_to,
-                                                          60 * 10)
-	    resources, unit = query.query(meter)
+                                                          3600 * 24)
         else:
             query = metering_utils.MeterQuery(request, date_from,
-                                              date_to, 60 * 10)
+                                              date_to, 3600 * 24)
 
-    	    resources, unit = query.queryByInstanceId(meter, date_from, date_to, group_by)
+        resources, unit = query.query(meter)
         series = metering_utils.series_for_meter(request, resources,
                                                  group_by, meter,
                                                  meter_name, stats_attr, unit)

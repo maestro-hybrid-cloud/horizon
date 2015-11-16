@@ -13,8 +13,6 @@
 import datetime
 import logging
 
-import json
-
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 import pytz
@@ -84,7 +82,7 @@ def calc_date_args(date_from, date_to, date_options):
     else:
         try:
             date_to = timezone.now()
-            date_from = date_to - datetime.timedelta(minutes=float(date_options))
+            date_from = date_to - datetime.timedelta(days=float(date_options))
         except Exception:
             raise ValueError(_("The time delta must be a number representing "
                                "the time span in days"))
@@ -130,24 +128,7 @@ def series_for_meter(request, aggregates, group_by, meter_id,
                 date = statistic.duration_end[:19]
                 value = float(getattr(statistic, stats_name))
                 point['data'].append({'x': date, 'y': value})
-	    
-
             series.append(point)
-	
-    newPoint = {
-	'unit':'%',
-	'name':'Threshold',
-	'meter':'meter',
-	'data':[]
-    }
-#    newPoint['data'].append({'x':'2015-11-07T15:10:47', 'y':2.0})
-#    newPoint['data'].append({'x':'2015-11-08T15:10:47', 'y':2.0})
-#    newPoint['data'].append({'x':'2015-11-09T15:10:47', 'y':2.0})
-#    newPoint['data'].append({'x':'2015-11-10T15:10:47', 'y':2.0})
-#    newPoint['data'].append({'x':'2015-11-11T15:10:47', 'y':2.0})
-#    newPoint['data'].append({'x':'2015-11-12T15:10:47', 'y':2.0})
-
-#    series.append(newPoint)
     return series
 
 
@@ -223,20 +204,13 @@ class ProjectAggregatesQuery(object):
             self.queries[tenant.name] = tenant_query
 
     def query(self, meter):
-        meter_list = [m for m in api.ceilometer.meter_list(self.request)
-                      if m.name == meter]
-        unit = ""
-        if len(meter_list) > 0:
-            unit = meter_list[0].unit
+        unit = get_unit(meter, self.request)
         ceilometer_usage = api.ceilometer.CeilometerUsage(self.request)
         resources = ceilometer_usage.resource_aggregates_with_statistics(
             self.queries, [meter], period=self.period,
             stats_attr=None,
             additional_query=self.additional_query)
         return resources, unit
-
-
-
 
 
 class MeterQuery(ProjectAggregatesQuery):
@@ -248,8 +222,35 @@ class MeterQuery(ProjectAggregatesQuery):
         # Resetting the tenant based filter set in base class
         self.queries = None
 
+    def query(self, meter):
+        def filter_by_meter_name(resource):
+            """Function for filtering of the list of resources.
 
-    def queryByInstanceId(self, meter, date_from, date_to, instanceId, additional_query=[]):
+            Will pick the right resources according to currently selected
+            meter.
+            """
+            for link in resource.links:
+                if link['rel'] == meter:
+                    # If resource has the currently chosen meter.
+                    return True
+            return False
+
+        unit = get_unit(meter, self.request)
+
+        ceilometer_usage = api.ceilometer.CeilometerUsage(self.request)
+        resources = ceilometer_usage.resources_with_statistics(
+            self.queries, [meter],
+            period=self.period,
+            stats_attr=None,
+            additional_query=self.additional_query,
+            filter_func=filter_by_meter_name)
+
+        return resources, unit
+
+    def filter_by_instance_id(self, meter, date_from, date_to, instance_id, additional_query=None):
+        if not additional_query:
+            additional_query = []
+
         if date_from:
             additional_query.append({'field': 'timestamp',
                                      'op': 'ge',
@@ -258,11 +259,13 @@ class MeterQuery(ProjectAggregatesQuery):
             additional_query.append({'field': 'timestamp',
                                      'op': 'le',
                                      'value': date_to})
-	self.additional_query = additional_query
+
+        self.additional_query = additional_query
+
         query = [{
-	    "field":"resource_id",
-	    "op":"eq",
-            "value": instanceId}]
+        "field":"resource_id",
+        "op":"eq",
+            "value": instance_id}]
         self.queries = query
 
         meter_list = [m for m in api.ceilometer.meter_list(self.request)
@@ -280,35 +283,3 @@ class MeterQuery(ProjectAggregatesQuery):
             additional_query=self.additional_query)
 
         return resources, unit
-    def query(self, meter, group):
-        def filter_by_meter_name(resource):
-            """Function for filtering of the list of resources.
-
-            Will pick the right resources according to currently selected
-            meter.
-            """
-            for link in resource.links:
-                if link['rel'] == meter:
-                    # If resource has the currently chosen meter.
-                    return True
-            return False
-
-        meter_list = [m for m in api.ceilometer.meter_list(self.request)
-                      if m.name == meter]
-
-        unit = ""
-        if len(meter_list) > 0:
-            unit = meter_list[0].unit
-	
-	self.quries = [{"resource_id": group}]	
-
-        ceilometer_usage = api.ceilometer.CeilometerUsage(self.request)
-        resources = ceilometer_usage.resources_with_statistics(
-            self.queries, [meter],
-            period=self.period,
-            stats_attr=None,
-            additional_query=self.additional_query,
-            filter_func=filter_by_meter_name)
-
-        return resources, unit
-

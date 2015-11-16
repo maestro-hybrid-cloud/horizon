@@ -91,13 +91,6 @@
         <select data-line-chart-command="select_box_change"
                 id="group_by" name="group_by" class="form-control">
           <option value="" selected="selected">{% trans "--" %}</option>
-          <optgroup label='{% trans "Instance" %}'>
-		{% for instance in instance_list %}
-                <option value="{{instance}}">
-                  {{instance}}
-                </option>
-		{% endfor %}
-          </optgroup>
           <option selected="selected" value="project" selected>{% trans "Project" %}</option>
         </select>
       </div>
