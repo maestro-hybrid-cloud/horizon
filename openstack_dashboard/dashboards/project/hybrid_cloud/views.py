@@ -339,8 +339,6 @@ class JSONView(View):
             msg = _('Unable to retrieve stack list.')
             exceptions.handle(self.request, msg)
 
-
-
         stacks = []
         for stack in heat_stacks:
             heat_resources = []
@@ -359,75 +357,6 @@ class JSONView(View):
                                   } for resource in heat_resources]}
             stacks.append(obj)
         return stacks
-
-    def _get_tenants(self, request):
-        tenants = []
-        domain_context = self.request.session.get('domain_context', None)
-        self._more = False
-        if policy.check((("identity", "identity:list_projects"),),
-                        self.request):
-            try:
-                tenants, self._more = api.keystone.tenant_list(
-                    self.request,
-                    domain=domain_context)
-            except Exception:
-                exceptions.handle(self.request,
-                                  _("Unable to retrieve project list."))
-        elif policy.check((("identity", "identity:list_user_projects"),),
-                          self.request):
-            try:
-                tenants, self._more = api.keystone.tenant_list(
-                    self.request,
-                    user=self.request.user.id,
-                    admin=False)
-            except Exception:
-                exceptions.handle(self.request,
-                                  _("Unable to retrieve project information."))
-        else:
-            msg = \
-                _("Insufficient privilege level to view project information.")
-            messages.info(self.request, msg)
-        return tenants
-
-    def _get_regional_tenants(self, request):
-        tenants = []
-        regional_tenants = []
-        try:
-            tenants, has_more = api.keystone.tenant_list(request)
-        except Exception:
-            tenants = []
-            exceptions.handle(self.request, _("Unable to retrieve project list."))
-        for tenant in tenants:
-            obj = {'name': tenant.name,
-                   'id': tenant.id,
-                   'description': tenant.description
-                   }
-            regional_tenants.append(obj)
-
-        return regional_tenants
-
-
-    def _get_tenant_networks(self, request):
-        tenants = self._get_tenants(request)
-        networks = []
-        for t in tenants:
-            try:
-                neutron_networks = api.neutron.network_list_for_tenant(
-                    request, t.id)
-            except Exception:
-                neutron_networks = []
-            for network in neutron_networks:
-                obj = {'name': network.name,
-                       'id': network.id,
-                       'subnets': [{'id': subnet.id,
-                                    'cidr': subnet.cidr}
-                                   for subnet in network.subnets],
-                       'status': network.status,
-                       'router:external': network['router:external']}
-                self.add_resource_url('horizon:project:networks:subnets:detail',
-                                      obj['subnets'])
-                networks.append(obj)
-        return networks
 
     def _prepare_gateway_ports(self, routers, ports):
         # user can't see port on external network. so we are
@@ -449,6 +378,12 @@ class JSONView(View):
                          'device_id': router['id'],
                          'fixed_ips': []}
             ports.append(fake_port)
+
+    def _get_region_list(self, request):
+        return {
+            'current_region': request.user.services_region,
+            'available_regions': sorted(request.user.available_services_regions)
+        }
 
     def get(self, request, *args, **kwargs):
         regions = self._get_region_list(request)
