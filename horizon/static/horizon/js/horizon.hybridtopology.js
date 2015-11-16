@@ -85,7 +85,7 @@ function Connection(data) {
     }
   }
   this.iconType = 'text';
-  this.icon = '\uf08e';
+  this.icon = '\uf0ec';
   this.networks = [];
   this.ports = [];
   this.type = 'connection';
@@ -123,8 +123,8 @@ function AWS(data) {
       this[key] = data[key];
     }
   }
-  this.iconType = 'path';
-  this.svg = 'aws';
+  this.iconType = 'text';
+  this.icon = '\uf0c2';
   this.networks = [];
   this.ports = [];
   this.type = 'aws';
@@ -176,7 +176,7 @@ horizon.hybrid_topology = {
   balloon_monitorTmpl : null,
   network_index: {},
   balloonID:null,
-  reload_duration: 60000,
+  reload_duration: 300000,
   network_height : 0,
   previous_message : null,
   deleting_device : null,
@@ -258,7 +258,7 @@ horizon.hybrid_topology = {
           self.retrieve_network_info();
           setTimeout(function() {
             self.previous_message = null;
-          },60000);
+          },300000);
         }
       });
 
@@ -531,7 +531,7 @@ horizon.hybrid_topology = {
       .attr('r', function(d) {
         switch (Object.getPrototypeOf(d.data)) {
           case ExternalNetwork.prototype:
-            return 35;
+            return 50;
           case Network.prototype:
             return 30;
           case Router.prototype:
@@ -543,13 +543,13 @@ horizon.hybrid_topology = {
           case Stack.prototype:
             return 25;
           case Connection.prototype:
-            return 30;
+            return 20;
           case VPN.prototype:
             return 30;
           case Subnet.prototype:
             return 20;
           case AWS.prototype:
-              return 20;
+            return 30;
           case ResourceRoot.prototype:
             return 30;
           case Resource.prototype:
@@ -571,7 +571,7 @@ horizon.hybrid_topology = {
           .attr('transform', function(d) {
             switch (Object.getPrototypeOf(d.data)) {
               case ExternalNetwork.prototype:
-                return 'scale(2.5)';
+                return 'scale(4)';
               case Network.prototype:
                 return 'scale(1.5)';
               case Server.prototype:
@@ -623,7 +623,7 @@ horizon.hybrid_topology = {
       .attr('transform', function(d) {
         switch (Object.getPrototypeOf(d.data)) {
           case ExternalNetwork.prototype:
-            return 'translate(40,3)';
+            return 'translate(60,3)';
           case Network.prototype:
             return 'translate(35,3)';
           case Router.prototype:
@@ -635,17 +635,17 @@ horizon.hybrid_topology = {
           case Stack.prototype:
             return 'translate(30,3)';
           case Connection.prototype:
-            return 'translate(30,3)';
+            return 'translate(25,3)';
           case VPN.prototype:
-            return 'translate(30,3)';
+            return 'translate(35,3)';
           case Subnet.prototype:
-            return 'translate(30,3)';
+            return 'translate(25,3)';
           case AWS.prototype:
-            return 'translate(30,3)';
+            return 'translate(35,3)';
           case ResourceRoot.prototype:
-            return 'translate(30,3)';
+            return 'translate(35,3)';
           case Resource.prototype:
-            return 'translate(30,3)';
+            return 'translate(25,3)';
         }
       });
 
@@ -930,6 +930,8 @@ horizon.hybrid_topology = {
       }
 
       _resref = stack.resources;
+      var awsNet = null;
+      var linkVpn = null;
       for (_k = 0, _reslen = _resref.length; _k < _reslen; _k++) {
         res = _resref[_k];
         console.log("Resources")
@@ -937,34 +939,13 @@ horizon.hybrid_topology = {
         var resource = null;
 
         console.log(res.type)
-        if (res.type == "OS::Heat::VPNConnection") {
-          resource = new Connection(res);
+        if (res.type == "AWS::CloudFormation::Stack") {
+          resource = new AWS(res);
+          awsNet = resource;
           if (!self.already_in_graph(self.data.resources, resource)) {
             self.new_node(resource);
             self.new_link(self.find_by_id(stack.id), self.find_by_id(resource.id));
 
-            for (var key in refRouters) {
-              var refRouter = refRouters[key];
-              self.new_link(self.find_by_id(refRouter.id), self.find_by_id(resource.id));
-            }
-
-            change = true;
-          } else {
-            obj = self.find_by_id(resource.id);
-            if (obj) {
-              obj.data = resource;
-            } else if (self.data.resources[resource.id] !== undefined) {
-            }
-          }
-        }
-        else if (res.type == "OS::Heat::Subnet") {
-          console.log("Subnet")
-          resource = new Subnet(res);
-          if (!self.already_in_graph(self.data.resources, resource)) {
-            self.new_node(resource);
-            self.new_link(self.find_by_id(stack.id), self.find_by_id(resource.id));
-
-            var linkVpn = null;
             if (resource) {
               var strRoot = 'vpn';
               var root_id = strRoot.concat(resource.id);
@@ -993,23 +974,11 @@ horizon.hybrid_topology = {
             } else if (self.data.resources[resource.id] !== undefined) {
             }
           }
-        } else if (res.type == "AWS::CloudFormation::Stack") {
-          console.log("Subnet")
-          resource = new AWS(res);
-          if (!self.already_in_graph(self.data.resources, resource)) {
-            self.new_node(resource);
-            self.new_link(self.find_by_id(stack.id), self.find_by_id(resource.id));
-
-            change = true;
-          } else {
-            obj = self.find_by_id(resource.id);
-            if (obj) {
-              obj.data = resource;
-            } else if (self.data.resources[resource.id] !== undefined) {
-            }
-          }
         }
-        else {
+        else if (res.type != "OS::Heat::Subnet"
+            && res.type != "OS::Heat::VPNConnection"
+            && res.type != "OS::Heat::VPNGateway"
+            && res.type != "OS::Heat::VPC") {
           resource = new Resource(res);
           if (!self.already_in_graph(self.data.resources, resource)) {
             self.new_node(resource);
@@ -1030,8 +999,82 @@ horizon.hybrid_topology = {
             }
           }
         }
+        if (resource) {
+          self.data.resources[resource.id] = resource;
+        }
+      }
+      // More on Resources
 
-        self.data.resources[resource.id] = resource;
+      //
+      _resref = stack.resources;
+      for (_k = 0, _reslen = _resref.length; _k < _reslen; _k++) {
+        res = _resref[_k];
+        console.log("Resources")
+        console.log(res)
+        var resource = null;
+
+        console.log(res.type)
+        if (res.type == "OS::Heat::Subnet" && linkVpn) {
+          console.log("Subnet")
+          resource = new Subnet(res);
+          if (!self.already_in_graph(self.data.resources, resource)) {
+            self.new_node(resource);
+            self.new_link(self.find_by_id(linkVpn.id), self.find_by_id(resource.id));
+
+            change = true;
+          } else {
+            obj = self.find_by_id(resource.id);
+            if (obj) {
+              obj.data = resource;
+            } else if (self.data.resources[resource.id] !== undefined) {
+            }
+          }
+        } else if (res.type == "OS::Heat::VPNConnection" && linkVpn) {
+          resource = new Connection(res);
+          if (!self.already_in_graph(self.data.resources, resource)) {
+            self.new_node(resource);
+            self.new_link(self.find_by_id(linkVpn.id), self.find_by_id(resource.id));
+
+            //for (var key in refRouters) {
+            //  var refRouter = refRouters[key];
+            //  self.new_link(self.find_by_id(refRouter.id), self.find_by_id(resource.id));
+            //}
+
+            change = true;
+          } else {
+            obj = self.find_by_id(resource.id);
+            if (obj) {
+              obj.data = resource;
+            } else if (self.data.resources[resource.id] !== undefined) {
+            }
+          }
+        } else if (res.type == "OS::Heat::VPNGateway" && linkVpn) {
+          resource = new Resource(res);
+          if (!self.already_in_graph(self.data.resources, resource)) {
+            self.new_node(resource);
+            self.new_link(self.find_by_id(linkVpn.id), self.find_by_id(resource.id));
+            change = true;
+          } else {
+            obj = self.find_by_id(resource.id);
+            if (obj) {
+              obj.data = resource;
+            } else if (self.data.resources[resource.id] !== undefined) {
+            }
+          }
+        } else if (res.type == "OS::Heat::VPC" && linkVpn) {
+          resource = new Resource(res);
+          if (!self.already_in_graph(self.data.resources, resource)) {
+            self.new_node(resource);
+            self.new_link(self.find_by_id(linkVpn.id), self.find_by_id(resource.id));
+            change = true;
+          } else {
+            obj = self.find_by_id(resource.id);
+            if (obj) {
+              obj.data = resource;
+            } else if (self.data.resources[resource.id] !== undefined) {
+            }
+          }
+        }
       }
     }
     // Ports
