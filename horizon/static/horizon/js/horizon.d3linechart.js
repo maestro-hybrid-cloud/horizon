@@ -631,8 +631,6 @@ console.log('refresh');
    */
   init: function(selector, settings) {
     var self = this;
-console.log('aaaa');
-setInterval(function(){ console.log("Hello"); }, 3000);
     $(selector).each(function() {
       self.refresh(this, settings);
     });
