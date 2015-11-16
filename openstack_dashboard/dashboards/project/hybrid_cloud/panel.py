@@ -4,7 +4,7 @@ import horizon
 from openstack_dashboard.dashboards.project import dashboard
 
 class Hybrid_Cloud(horizon.Panel):
-    name = _("HybridCloud")
+    name = _("Hybrid Cloud")
     slug = "hybrid_cloud"
 
 

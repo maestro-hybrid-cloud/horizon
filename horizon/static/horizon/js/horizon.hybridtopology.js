@@ -131,8 +131,6 @@ horizon.hybrid_topology = {
     self.data.stacks = {};
     self.data.connections = {};
     self.data.resources = {};
-    self.data.tenants = {};
-    self.data.tenant_networks = {};
 
     // Setup balloon popups
     self.balloonTmpl = Hogan.compile(angular.element('#balloon_container').html());
@@ -694,22 +692,6 @@ horizon.hybrid_topology = {
         return obj == d.data;
       };
     };
-
-
-    _tenant_ref = data.tenants;
-    for (_i = 0, _tenentlen = _tenant_ref.length; _i < _tenentlen; _i++) {
-      tenant = _tenant_ref[_i];
-      console.log(tenant)
-    }
-
-
-    _tenet_ref = data.tenant_networks;
-    for (_i = 0, _tenetlen = _tenet_ref.length; _i < _tenetlen; _i++) {
-      tenet = _tenet_ref[_i];
-      console.log(tenet)
-    }
-
-
     // Networks
     _netref = data.networks;
     console.log("Network : " + data.networks)

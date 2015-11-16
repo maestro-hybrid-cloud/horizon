@@ -72,25 +72,16 @@ class DataProcessingPanels(horizon.PanelGroup):
               'data_processing.data_image_registry',
               'data_processing.data_plugins',)
 
-
-#class HybridCloudPanels(horizon.PanelGroup):
-#    slug = "hybrid_cloud"
-#    name = _("HybridCloud")
-#    panels = ('hybrid_cloud',)
-
-
 class Project(horizon.Dashboard):
     name = _("Project")
     slug = "project"
     panels = (
         BasePanels,
         NetworkPanels,
-#	HybridCloudPanels,
         ObjectStorePanels,
         OrchestrationPanels,
         DatabasePanels,
         DataProcessingPanels,)
     default_panel = 'overview'
-
 
 horizon.register(Project)
