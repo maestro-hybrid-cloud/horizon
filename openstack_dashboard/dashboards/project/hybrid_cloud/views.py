@@ -411,27 +411,27 @@ class JSONView(View):
         request.session['services_region'] = next
         return HttpResponse(json_string, content_type='text/json')
 
-    class SamplesView(django.views.generic.TemplateView):
-        def get(self, request, *args, **kwargs):
+class SamplesView(django.views.generic.TemplateView):
+    def get(self, request, *args, **kwargs):
 
-            meter = 'cpu_util'
-            meter_name = meter.replace(".", "_")
-            date_options = 7
-            date_from = None
-            date_to = None
-            stats_attr = 'avg'
+        meter = 'cpu_util'
+        meter_name = meter.replace(".", "_")
+        date_options = 7
+        date_from = None
+        date_to = None
+        stats_attr = 'avg'
 
-            try:
-                date_from, date_to = metering_utils.calc_date_args(date_from,
-                                                                   date_to,
-                                                                   date_options)
-            except Exception:
-                exceptions.handle(self.request, _('Dates cannot be recognized.'))
+        try:
+            date_from, date_to = metering_utils.calc_date_args(date_from,
+                                                               date_to,
+                                                               date_options)
+        except Exception:
+            exceptions.handle(self.request, _('Dates cannot be recognized.'))
 
-            query = metering_utils.MeterQuery(request, date_from, date_to, 3600 * 24)
-            resources, unit = query.filter_by_instance_id(meter, date_from, date_to, request.GET.get('instance_id'))
-            series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'), meter, meter_name, 'avg', unit)
-            series = metering_utils.normalize_series_by_unit(series)
-            ret = {'series': series, 'settings': {}}
+        query = metering_utils.MeterQuery(request, date_from, date_to, 3600 * 24)
+        resources, unit = query.filter_by_instance_id(meter, date_from, date_to, request.GET.get('instance_id'))
+        series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'), meter, meter_name, 'avg', unit)
+        series = metering_utils.normalize_series_by_unit(series)
+        ret = {'series': series, 'settings': {}}
 
-            return HttpResponse(json.dumps(ret), content_type='application/json')
+        return HttpResponse(json.dumps(ret), content_type='application/json')
