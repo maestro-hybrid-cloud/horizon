@@ -51,17 +51,6 @@ from openstack_dashboard.dashboards.project.networks import\
 from openstack_dashboard.dashboards.project.routers import\
     views as r_views
 
-class NTAddInterfaceView(p_views.AddInterfaceView):
-    success_url = "horizon:project:network_topology:index"
-    failure_url = "horizon:project:network_topology:index"
-
-    def get_success_url(self):
-        return reverse("horizon:project:network_topology:index")
-
-    def get_context_data(self, **kwargs):
-        context = super(NTAddInterfaceView, self).get_context_data(**kwargs)
-        context['form_url'] = 'horizon:project:network_topology:interface'
-        return context
 
 class NTCreateRouterView(r_views.CreateView):
     template_name = 'project/network_topology/create_router.html'
@@ -122,7 +111,7 @@ class NetworkTopologyView(views.HorizonTemplateView):
 
     def _quota_exceeded(self, quota):
         usages = quotas.tenant_quota_usages(self.request)
-        available = usages[quota]['available']
+        available = usages.get(quota, {}).get('available', 1)
         return available <= 0
 
     def get_context_data(self, **kwargs):
@@ -143,8 +132,6 @@ class NetworkTopologyView(views.HorizonTemplateView):
             settings, 'CONSOLE_TYPE', 'AUTO')
         context['show_ng_launch'] = getattr(
             settings, 'LAUNCH_INSTANCE_NG_ENABLED', False)
-        context['show_legacy_launch'] = getattr(
-            settings, 'LAUNCH_INSTANCE_LEGACY_ENABLED', True)
         return context
 
 
@@ -301,18 +288,11 @@ class JSONView(View):
                          'fixed_ips': []}
             ports.append(fake_port)
 
-    def _get_region_list(self, request):
-        return {
-            'current_region': request.user.services_region,
-            'available_regions': sorted(request.user.available_services_regions)
-        }
-
     def get(self, request, *args, **kwargs):
         data = {'servers': self._get_servers(request),
                 'networks': self._get_networks(request),
                 'ports': self._get_ports(request),
-                'routers': self._get_routers(request),
-                'stacks': self._get_stacks(request)}
+                'routers': self._get_routers(request)}
         self._prepare_gateway_ports(data['routers'], data['ports'])
         json_string = json.dumps(data, ensure_ascii=False)
         return HttpResponse(json_string, content_type='text/json')
