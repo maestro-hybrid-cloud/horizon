@@ -679,8 +679,6 @@ console.log('refresh');
       via web sockets
       this.charts.add_or_update(chart)
     */
-console.log('qwer');
-setInterval(    chart.refresh(), 3000);
   },
 
   /**
