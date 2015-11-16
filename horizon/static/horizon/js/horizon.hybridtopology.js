@@ -826,12 +826,6 @@ horizon.hybrid_topology = {
       }
 
     }
-
-
-    
-
-
-
     // Ports
     _portref = data.ports;
     for (_l = 0, _portlen = _portref.length; _l < _portlen; _l++) {
@@ -968,7 +962,6 @@ horizon.hybrid_topology = {
     }
     return this.vis.selectAll('line.link').data(this.links).exit().remove();
   },
-
 
   remove_node_on_delete: function () {
     var self = this;

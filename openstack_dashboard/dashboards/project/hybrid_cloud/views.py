@@ -145,7 +145,7 @@ class NetworkDetailView(n_views.DetailView):
 
 class HybridTopologyView(views.HorizonTemplateView):
     template_name = 'project/hybrid_cloud/index.html'
-    page_title = _("Network Topology")
+    page_title = _("Hybrid Cloud Manager")
 
     def _has_permission(self, policy):
         has_permission = True
