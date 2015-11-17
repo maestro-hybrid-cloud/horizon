@@ -381,25 +381,7 @@ class JSONView(View):
                          'fixed_ips': []}
             ports.append(fake_port)
 
-    def _get_region_list(self, request):
-        return {
-            'current_region': request.user.services_region,
-            'available_regions': sorted(request.user.available_services_regions)
-        }
-
     def get(self, request, *args, **kwargs):
-        regions = self._get_region_list(request)
-        region_list = regions['available_regions']
-
-        current = region_list.index(regions['current_region'])
-        next = regions['available_regions'][0]
-        if current < len(region_list):
-            for i in range(current+1)[::-1]:
-                del region_list[i]
-
-            if len(region_list) > 0:
-                next = region_list[0]
-
         data = {'servers': self._get_servers(request),
                 'networks': self._get_networks(request),
                 'ports': self._get_ports(request),
@@ -407,10 +389,7 @@ class JSONView(View):
                 'stacks': self._get_stacks(request)}
         self._prepare_gateway_ports(data['routers'], data['ports'])
         json_string = json.dumps(data, ensure_ascii=False)
-
-        request.session['services_region'] = next
         return HttpResponse(json_string, content_type='text/json')
-
 
 class SamplesView(django.views.generic.TemplateView):
     def get(self, request, *args, **kwargs):
@@ -431,13 +410,19 @@ class SamplesView(django.views.generic.TemplateView):
         if request.GET.get('instance_id') != None:
            query = metering_utils.MeterQuery(request, date_from, date_to, 3600 * 24)
            resources, unit = query.filter_by_instance_id(meter, date_from, date_to, request.GET.get('instance_id'))
-           series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'), meter, meter_name, 'avg', unit)
+           series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'),
+                                                    meter, meter_name, 'avg', unit)
+           settings =  {'yMin': 0, 'yMax': 100, 'higlight_last_point': True,
+                                                "auto_size": False, 'auto_resize': True}
         else:
            query = metering_utils.ProjectAggregatesQuery(request, date_from, date_to, 3600 * 24)
            resources, unit = query.query(meter)
-           series = metering_utils.series_for_meter_with_threshold(request, resources, group_by, meter, meter_name, stats_attr, unit)
+           series = metering_utils.series_for_meter_with_threshold_and_max(request, resources, group_by, meter,
+                                                                           meter_name, stats_attr, unit,
+                                                                           50.0, 100.0)
+           settings =  {'yMin': 0, 'yMax': 100, 'higlight_last_point': True,
+                                                "auto_size": False, 'auto_resize': False}
 
         series = metering_utils.normalize_series_by_unit(series)
-        ret = {'series': series, 'settings': {}}
-
+        ret = {'series': series, 'settings': settings}
         return HttpResponse(json.dumps(ret), content_type='application/json')

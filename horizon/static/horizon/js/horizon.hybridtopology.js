@@ -267,6 +267,7 @@ horizon.hybrid_topology = {
     self.loading();
     self.force_direction(0.05,70,-700);
     self.retrieve_network_info(true);
+
   },
 
   // Get the json data about the current deployment
@@ -332,7 +333,7 @@ horizon.hybrid_topology = {
     // Main svg
     self.outer_group = d3.select('#topologyCanvasContainer').append('svg')
       .attr('width', '100%')
-      .attr('height', angular.element(document).height() - 200 + "px")
+      .attr('height', angular.element(document).height() - 500 + "px")
       .attr('pointer-events', 'all')
       .append('g')
       .call(self.zoom
@@ -1369,16 +1370,19 @@ horizon.hybrid_topology = {
       htmlData.ips = d.ip_addresses;
       htmlData.console = d.console;
 
-      if (typeof horizon.d3_line_chart !== 'undefined') {
-         horizon.d3_line_chart.init("div[data-chart-type='line_chart']",
-                                 {'auto_resize': true});
-      }
-
       html = balloonTmpl.render(htmlData,{
         table1:deviceTmpl,
         table2:instanceTmpl,
 	    table3:monitorTmpl
       });
+
+      setTimeout(function() {
+        if (typeof horizon.d3_line_chart !== 'undefined') {
+          horizon.d3_line_chart.init("div[id='instance_cpu_util_chart']",
+                                 {'auto_resize': true, 'yMax': 100});
+        }
+      }, 700);
+
     } else if (d instanceof Network || d instanceof ExternalNetwork) {
       for (var s in subnets) {
         subnets[s].network_id = d.id;

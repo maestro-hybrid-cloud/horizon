@@ -28,7 +28,8 @@
 <div id="topologyMessages"></div>
 
 <div class="col-sm-9 chart_container">
-  <div class="chart-1"
+  <div
+    id="all_instances_cpu_util_chart"
     data-chart-type="line_chart"
     data-url="{% url 'horizon:project:hybrid_cloud:samples'%}"
     data-form-selector='#linechart_general_form'

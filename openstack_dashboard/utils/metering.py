@@ -132,45 +132,32 @@ def series_for_meter(request, aggregates, group_by, meter_id,
     return series
 
 
+def series_for_meter_with_threshold_and_max(request, aggregates, group_by, meter_id,
+                     meter_name, stats_name, unit, threshold=0, max=0, label=None):
 
-def series_for_meter_with_threshold(request, aggregates, group_by, meter_id,
-                     meter_name, stats_name, unit, label=None):
-    """Construct datapoint series for a meter from resource aggregates."""
-    series = []
-    date = []
-    for resource in aggregates:
-        if resource.get_meter(meter_name):
-            if label:
-                name = label
-            else:
-                resource_name = ('id' if group_by == "project"
-                                 else 'resource_id')
-                resource_id = getattr(resource, resource_name)
-                name = get_resource_name(request, resource_id,
-                                         resource_name, meter_name)
-            point = {'unit': unit,
-                     'name': name,
-                     'meter': meter_id,
-                     'data': []}
-            thresholdData=[]
-            for statistic in resource.get_meter(meter_name):
-                date = statistic.duration_end[:19]
-                value = float(getattr(statistic, stats_name))
-                point['data'].append({'x': date, 'y': value})
-                thresholdData.append({'x': date, 'y': 50.0})
+    series = series_for_meter(request, aggregates, group_by, meter_id,
+                              meter_name, stats_name, unit, label)
+    threshold_data = []
+    max_data = []
+    data = series[0]['data']
 
-            series.append(point);
-    thresholdPoint = {
-        'unit':'%',
-        'name':'Threshold',
-        'meter':'cpu_util',
-        'data':[]
-    }
+    for meter_data in data:
+        threshold_data.append({'x': meter_data['x'], 'y': threshold})
+        max_data.append({'x': meter_data['x'], 'y': max})
 
-    thresholdPoint['data'] = thresholdData
-    series.append(thresholdPoint)
+    threshold_point = {'unit': unit,
+         'name': 'Threshold',
+         'meter': meter_id,
+         'data': threshold_data}
+
+    max_point = {'unit': unit,
+         'name': 'Max',
+         'meter': meter_id,
+         'data': max_data}
+
+    series.append(threshold_point)
+    series.append(max_point)
     return series
-
 
 
 def normalize_series_by_unit(series):
