@@ -333,7 +333,7 @@ horizon.hybrid_topology = {
     // Main svg
     self.outer_group = d3.select('#topologyCanvasContainer').append('svg')
       .attr('width', '100%')
-      .attr('height', angular.element(document).height() - 500 + "px")
+      .attr('height', angular.element(document).height() - 400 + "px")
       .attr('pointer-events', 'all')
       .append('g')
       .call(self.zoom
@@ -1379,7 +1379,7 @@ horizon.hybrid_topology = {
       setTimeout(function() {
         if (typeof horizon.d3_line_chart !== 'undefined') {
           horizon.d3_line_chart.init("div[id='instance_cpu_util_chart']",
-                                 {'auto_resize': true, 'yMax': 100});
+                                 {'auto_size', false, 'auto_resize': true, 'yMax': 100});
         }
       }, 700);
 
