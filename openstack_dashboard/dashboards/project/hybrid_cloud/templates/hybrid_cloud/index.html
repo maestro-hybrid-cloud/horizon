@@ -27,6 +27,23 @@
 <span data-hybridtopology="{% url 'horizon:project:hybrid_cloud:json' %}" id="hybridtopology"></span>
 <div id="topologyMessages"></div>
 
+<div class="col-sm-9 chart_container">
+  <div class="chart-1"
+    data-chart-type="line_chart"
+    data-url="{% url 'horizon:project:hybrid_cloud:samples'%}"
+    data-form-selector='#linechart_general_form'
+    data-legend-selector="#legend"
+    data-smoother-selector="#smoother"
+    data-slider-selector="#slider">
+  </div>
+  <div id="slider"></div>
+  <div class="col-sm-3 legend_container">
+      <div id="smoother" title="Smoothing"></div>
+      <div id="legend"></div>
+  </div>
+</div>
+
+
 <script type="text/javascript">
   if (typeof horizon.hybrid_topology !== 'undefined') {
     horizon.hybrid_topology.init();

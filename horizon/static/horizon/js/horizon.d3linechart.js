@@ -1,3 +1,4 @@
+/* global Rickshaw */
 /*
   Draw line chart in d3.
 
@@ -353,9 +354,6 @@ horizon.d3_line_chart = {
           self.height = auto_height;
         }
       }
-     
-//      self.width = 401;i
-//      self.height = 251;
 
       /* Setting new sizes. It is important when resizing a window.*/
       $(self.html_element).css('height', self.height);
@@ -379,11 +377,11 @@ horizon.d3_line_chart = {
      */
     self.refresh = function (){
       var self = this;
-console.log('refresh');
+
       self.start_loading();
       horizon.ajax.queue({
         url: self.final_url,
-        success: function (data, textStatus, jqXHR) {
+        success: function (data) {
           // Clearing the old chart data.
           self.jquery_element.empty();
           $(self.legend_element).empty();
@@ -403,7 +401,7 @@ console.log('refresh');
             self.render();
           }
         },
-        error: function (jqXHR, textStatus, errorThrown) {
+        error: function () {
           $(self.html_element).html(gettext('No data available.'));
           $(self.legend_element).empty();
           // Setting a fix height breaks things when legend is getting
@@ -412,7 +410,7 @@ console.log('refresh');
           // FIXME add proper fail message
           horizon.alert('error', gettext('An error occurred. Please try again later.'));
         },
-        complete: function (jqXHR, textStatus) {
+        complete: function () {
           self.finish_loading();
         }
       });
@@ -477,7 +475,7 @@ console.log('refresh');
       graph.render();
 
       if (self.hover_formatter === 'verbose'){
-        var hoverDetail = new Rickshaw.Graph.HoverDetail({
+        new Rickshaw.Graph.HoverDetail({
           graph: graph,
           formatter: function(series, x, y) {
             if(y % 1 === 0) {
@@ -508,17 +506,17 @@ console.log('refresh');
           element:  self.legend_element
         });
 
-        var shelving = new Rickshaw.Graph.Behavior.Series.Toggle({
+        new Rickshaw.Graph.Behavior.Series.Toggle({
           graph: graph,
           legend: legend
         });
 
-        var order = new Rickshaw.Graph.Behavior.Series.Order({
+        new Rickshaw.Graph.Behavior.Series.Order({
           graph: graph,
           legend: legend
         });
 
-        var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight({
+        new Rickshaw.Graph.Behavior.Series.Highlight({
           graph: graph,
           legend: legend
         });
@@ -535,7 +533,7 @@ console.log('refresh');
         };
         if (!self.settings.axes_y_label){
           // hiding label of Y axis if setting is set to false
-          axes_y_settings.tickFormat = (function (d) { return ''; });
+          axes_y_settings.tickFormat = (function () { return ''; });
         }
         var axes_y = new Rickshaw.Graph.Axis.Y(axes_y_settings);
         axes_y.render();
@@ -634,6 +632,7 @@ console.log('refresh');
     $(selector).each(function() {
       self.refresh(this, settings);
     });
+
     if (settings !== undefined && settings.auto_resize) {
       /*
         I want to refresh chart on resize of the window, but only
@@ -679,6 +678,7 @@ console.log('refresh');
       via web sockets
       this.charts.add_or_update(chart)
     */
+    chart.refresh();
   },
 
   /**
@@ -702,7 +702,7 @@ console.log('refresh');
      * has to be projected to forms. So when form input is changed,
      * all connected charts are refreshed.
      */
-    connect_forms_to_charts = function(){
+    var connect_forms_to_charts = function(){
       $(selector).each(function() {
         var chart = $(this);
         $(chart.data('form-selector')).each(function(){
@@ -725,7 +725,7 @@ console.log('refresh');
      * @param event_name Event name we want to delegate.
      * @param settings An object containing settings of the chart.
      */
-    delegate_event_and_refresh_charts = function(selector, event_name, settings) {
+    var delegate_event_and_refresh_charts = function(selector, event_name, settings) {
       $('form').delegate(selector, event_name, function() {
         /*
           Registering 'any event' on form element by delegating. This way it
@@ -748,7 +748,7 @@ console.log('refresh');
      * A helper function for catching change event of form selectboxes
      * connected to charts.
      */
-    bind_select_box_change = function(settings) {
+    var bind_select_box_change = function(settings) {
       delegate_event_and_refresh_charts(select_box_selector, 'change', settings);
     };
 
@@ -757,7 +757,6 @@ console.log('refresh');
      * connected to charts.
      */
     var bind_datepicker_change = function(settings) {
-      var now = new Date();
       horizon.datepickers.add(datepicker_selector);
       delegate_event_and_refresh_charts(datepicker_selector, 'changeDate', settings);
     };

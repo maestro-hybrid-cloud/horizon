@@ -132,6 +132,47 @@ def series_for_meter(request, aggregates, group_by, meter_id,
     return series
 
 
+
+def series_for_meter_with_threshold(request, aggregates, group_by, meter_id,
+                     meter_name, stats_name, unit, label=None):
+    """Construct datapoint series for a meter from resource aggregates."""
+    series = []
+    date = []
+    for resource in aggregates:
+        if resource.get_meter(meter_name):
+            if label:
+                name = label
+            else:
+                resource_name = ('id' if group_by == "project"
+                                 else 'resource_id')
+                resource_id = getattr(resource, resource_name)
+                name = get_resource_name(request, resource_id,
+                                         resource_name, meter_name)
+            point = {'unit': unit,
+                     'name': name,
+                     'meter': meter_id,
+                     'data': []}
+            thresholdData=[]
+            for statistic in resource.get_meter(meter_name):
+                date = statistic.duration_end[:19]
+                value = float(getattr(statistic, stats_name))
+                point['data'].append({'x': date, 'y': value})
+                thresholdData.append({'x': date, 'y': 50.0})
+
+            series.append(point);
+    thresholdPoint = {
+        'unit':'%',
+        'name':'Threshold',
+        'meter':'cpu_util',
+        'data':[]
+    }
+
+    thresholdPoint['data'] = thresholdData
+    series.append(thresholdPoint)
+    return series
+
+
+
 def normalize_series_by_unit(series):
     """Transform series' values into a more human readable form:
     1) Determine the data point with the maximum value

@@ -411,16 +411,16 @@ class JSONView(View):
         request.session['services_region'] = next
         return HttpResponse(json_string, content_type='text/json')
 
+
 class SamplesView(django.views.generic.TemplateView):
     def get(self, request, *args, **kwargs):
-
         meter = 'cpu_util'
         meter_name = meter.replace(".", "_")
         date_options = 7
         date_from = None
         date_to = None
         stats_attr = 'avg'
-
+        group_by = 'project'
         try:
             date_from, date_to = metering_utils.calc_date_args(date_from,
                                                                date_to,
@@ -428,9 +428,15 @@ class SamplesView(django.views.generic.TemplateView):
         except Exception:
             exceptions.handle(self.request, _('Dates cannot be recognized.'))
 
-        query = metering_utils.MeterQuery(request, date_from, date_to, 3600 * 24)
-        resources, unit = query.filter_by_instance_id(meter, date_from, date_to, request.GET.get('instance_id'))
-        series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'), meter, meter_name, 'avg', unit)
+        if request.GET.get('instance_id') != None:
+           query = metering_utils.MeterQuery(request, date_from, date_to, 3600 * 24)
+           resources, unit = query.filter_by_instance_id(meter, date_from, date_to, request.GET.get('instance_id'))
+           series = metering_utils.series_for_meter(request, resources, request.GET.get('instance_id'), meter, meter_name, 'avg', unit)
+        else:
+           query = metering_utils.ProjectAggregatesQuery(request, date_from, date_to, 3600 * 24)
+           resources, unit = query.query(meter)
+           series = metering_utils.series_for_meter_with_threshold(request, resources, group_by, meter, meter_name, stats_attr, unit)
+
         series = metering_utils.normalize_series_by_unit(series)
         ret = {'series': series, 'settings': {}}
 
