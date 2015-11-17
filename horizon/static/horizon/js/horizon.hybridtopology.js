@@ -1379,7 +1379,7 @@ horizon.hybrid_topology = {
       setTimeout(function() {
         if (typeof horizon.d3_line_chart !== 'undefined') {
           horizon.d3_line_chart.init("div[id='instance_cpu_util_chart']",
-                                 {'auto_size', false, 'auto_resize': true, 'yMax': 100});
+                                 {'auto_size': false, 'auto_resize': true, 'yMax': 100});
         }
       }, 700);
 
