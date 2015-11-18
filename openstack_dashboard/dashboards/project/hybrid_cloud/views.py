@@ -18,6 +18,8 @@
 
 import json
 
+import boto.vpc
+
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.core.urlresolvers import reverse_lazy
@@ -188,6 +190,15 @@ class HybridTopologyView(views.HorizonTemplateView):
 
 class JSONView(View):
 
+    def __init__(self):
+        super(JSONView, self).__init__(self)
+        self._vpc_conn = None
+
+    def vpc(self):
+        if self._vpc_conn is None:
+            self._vpc_conn = boto.vpc.VPCConnection()
+        return self._vpc_conn
+
     @property
     def is_router_enabled(self):
         network_config = getattr(settings, 'OPENSTACK_NEUTRON_NETWORK', {})
@@ -208,56 +219,85 @@ class JSONView(View):
                 return True
         return False
 
-    def _get_servers(self, request):
-        # Get nova data
-        try:
-            servers, more = api.nova.server_list(request)
-        except Exception:
-            servers = []
-        data = []
-        console_type = getattr(settings, 'CONSOLE_TYPE', 'AUTO')
-        # lowercase of the keys will be used at the end of the console URL.
-        for server in servers:
-            try:
-                console = i_console.get_console(
-                    request, console_type, server)[0].lower()
-            except exceptions.NotAvailable:
-                console = None
+    def _get_servers(self, request, stack):
+        stack_resources = self._get_resources_from_stack(request, stack)
 
-            server_data = {'name': server.name,
-                           'status': server.status,
-                           'task': getattr(server, 'OS-EXT-STS:task_state'),
-                           'id': server.id}
-            if console:
-                server_data['console'] = console
-            data.append(server_data)
-        self.add_resource_url('horizon:project:instances:detail', data)
+        data = []
+        for resource in stack_resources:
+            resource_data = {'name': resource.resource_name,
+                                 'id': resource.physical_resource_id,
+                                 'type': resource.resource_type,
+                                 'status': resource.resource_status,
+                                 'stack_id': stack.id,
+                                 'stack_name': stack.stack_name }
+
+            if resource.resource_type == 'OS::Heat::ScaledResource':
+                server = api.nova.server_get(request, resource_data['id'])
+
+                console_type = getattr(settings, 'CONSOLE_TYPE', 'AUTO')
+                # lowercase of the keys will be used at the end of the console URL.
+                try:
+                    console = i_console.get_console(
+                        request, console_type, server)[0].lower()
+                except exceptions.NotAvailable:
+                    console = None
+
+                server_data = {'name': server.name,
+                               'status': server.status,
+                               'task': getattr(server, 'OS-EXT-STS:task_state'),
+                               'id': server.id}
+                if console:
+                    server_data['console'] = console
+
+                self.add_resource_url('horizon:project:instances:detail', data)
+                data.append(server_data)
+
+            elif resource.resource_type == 'AWS::VPC::EC2Instance':
+                server_data = {'name': resource_data['name'],
+                           'status': resource_data['status'],
+                           'task': None,
+                           'id': resource_data['id']}
+
+                server_data['console'] = None
+                data.append(server_data)
+
         return data
 
-    def _get_networks(self, request):
-        # Get neutron data
-        # if we didn't specify tenant_id, all networks shown as admin user.
-        # so it is need to specify the networks. However there is no need to
-        # specify tenant_id for subnet. The subnet which belongs to the public
-        # network is needed to draw subnet information on public network.
-        try:
-            neutron_networks = api.neutron.network_list_for_tenant(
-                request,
-                request.user.tenant_id)
-        except Exception:
-            neutron_networks = []
+    def _get_networks(self, request, stack):
+        stack_resources = self._get_resources_from_stack(request, stack)
+
         networks = []
-        for network in neutron_networks:
-            obj = {'name': network.name,
-                   'id': network.id,
-                   'subnets': [{'id': subnet.id,
-                                'cidr': subnet.cidr}
-                               for subnet in network.subnets],
-                   'status': network.status,
-                   'router:external': network['router:external']}
-            self.add_resource_url('horizon:project:networks:subnets:detail',
-                                  obj['subnets'])
-            networks.append(obj)
+        for resource in stack_resources:
+            resource_data = {'name': resource.resource_name,
+                             'id': resource.physical_resource_id,
+                             'type': resource.resource_type,
+                             'status': resource.resource_status,
+                             'stack_id': stack.id,
+                             'stack_name': stack.stack_name }
+
+            if resource.resource_type == 'OS::Neutron::Net':
+                network = api.neutron.network_get(request, resource_data['id'])
+
+                obj = {'name': network.name,
+                       'id': network.id,
+                       'subnets': [{'id': subnet.id,
+                                    'cidr': subnet.cidr}
+                                   for subnet in network.subnets],
+                       'status': network.status,
+                       'router:external': network['router:external']}
+                self.add_resource_url('horizon:project:networks:subnets:detail',
+                                      obj['subnets'])
+                networks.append(obj)
+
+            elif resource.resource_type == 'AWS::VPC::VPC':
+                subnets = self.vpc().get_all_subnets(filters={'vpcId': resource_data['id']})
+                networks.append({'name': resource_data['name'],
+                       'id': resource_data['id'],
+                       'subnets': [{'id': subnet.id,
+                                    'cidr': subnet.cidr_block}
+                                   for subnet in subnets],
+                       'status': resource_data['status'],
+                       'router:external': True})
 
         # Add public networks to the networks list
         if self.is_router_enabled:
@@ -295,23 +335,35 @@ class JSONView(View):
                       key=lambda x: x.get('router:external'),
                       reverse=True)
 
-    def _get_routers(self, request):
+    def _get_routers(self, request, stack):
         if not self.is_router_enabled:
             return []
-        try:
-            neutron_routers = api.neutron.router_list(
-                request,
-                tenant_id=request.user.tenant_id)
-        except Exception:
-            neutron_routers = []
 
-        routers = [{'id': router.id,
-                    'name': router.name,
-                    'status': router.status,
-                    'external_gateway_info': router.external_gateway_info}
-                   for router in neutron_routers]
-        self.add_resource_url('horizon:project:routers:detail', routers)
-        return routers
+        stack_resources = self._get_resources_from_stack(request, stack)
+
+        routers = []
+        for resource in stack_resources:
+            resource_data = {'name': resource.resource_name,
+                             'id': resource.physical_resource_id,
+                             'type': resource.resource_type,
+                             'status': resource.resource_status,
+                             'stack_id': stack.id,
+                             'stack_name': stack.stack_name }
+
+            if resource.resource_type == 'AWS::VPC::VPNGateway':
+                routers.append({'id': resource_data['id'],
+                        'name': resource_data['name'],
+                        'status': resource_data['status']})
+
+            elif resource.resource_type == 'OS::Neutron::Router':
+                router = api.neutron.router_get(request, resource_data['id'])
+                routers.append({'id': router.id,
+                            'name': router.name,
+                            'status': router.status,
+                            'external_gateway_info': router.external_gateway_info})
+
+                self.add_resource_url('horizon:project:routers:detail', routers)
+                return routers
 
     def _get_ports(self, request):
         try:
@@ -334,31 +386,43 @@ class JSONView(View):
     def _get_stacks(self, request):
         heat_stacks = []
         try:
-            heat_stacks, self._more, self._prev = api.heat.stacks_list(self.request, 3)
+            heat_stacks, self._more, self._prev = api.heat.stacks_list(request)
         except Exception:
             self._prev = False
             self._more = False
             msg = _('Unable to retrieve stack list.')
             exceptions.handle(self.request, msg)
 
-        stacks = []
-        for stack in heat_stacks:
+        return heat_stacks
+
+    def _get_stack_include_aws_autoscaling_group(self, request):
+        all_stacks = self._get_stacks(request)
+
+        result_stacks = []
+        for stack in all_stacks:
             heat_resources = []
             try:
-                heat_resources = api.heat.resources_list(self.request, stack.stack_name)
+                heat_resources = api.heat.resources_list(request, stack.stack_name, 3)
             except Exception:
                 msg = _('Unable to retrieve resource list.')
-                exceptions.handle(self.request, msg)
-            obj = {'name': stack.stack_name,
-                   'id': stack.id,
-                   'status': stack.stack_status,
-                   'resources': [{'name': resource.resource_name,
-                                  'id': resource.physical_resource_id,
-                                  'type': resource.resource_type,
-                                  'status': resource.resource_status}
-                                 for resource in heat_resources]}
-            stacks.append(obj)
-        return stacks
+                exceptions.handle(request, msg)
+
+            for resource in heat_resources:
+                if resource.resource_type == 'OS::Heat::AWSHybridAutoScalingGroup':
+                    result_stacks.append(stack)
+                    break
+
+        return result_stacks
+
+    def _get_resources_from_stack(self, request, stack):
+        heat_resources = []
+        try:
+            heat_resources = api.heat.resources_list(request, stack.stack_name, 3)
+        except Exception:
+            msg = _('Unable to retrieve resource list.')
+            exceptions.handle(self.request, msg)
+
+        return heat_resources
 
     def _prepare_gateway_ports(self, routers, ports):
         # user can't see port on external network. so we are
@@ -382,11 +446,20 @@ class JSONView(View):
             ports.append(fake_port)
 
     def get(self, request, *args, **kwargs):
-        data = {'servers': self._get_servers(request),
-                'networks': self._get_networks(request),
+        stacks = self._get_stack_include_aws_autoscaling_group(request)
+
+        data = {'servers': [],
+                'networks': [],
+                'ports': [],
+                'routers': [],
+                'stacks': []}
+
+        for stack in stacks:
+            data = {'servers': self._get_servers(request, stack),
+                'networks': self._get_networks(request, stack),
                 'ports': self._get_ports(request),
-                'routers': self._get_routers(request),
-                'stacks': self._get_stacks(request)}
+                'routers': self._get_routers(request, stack)}
+
         self._prepare_gateway_ports(data['routers'], data['ports'])
         json_string = json.dumps(data, ensure_ascii=False)
         return HttpResponse(json_string, content_type='text/json')

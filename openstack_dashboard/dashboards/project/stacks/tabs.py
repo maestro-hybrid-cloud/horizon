@@ -125,7 +125,7 @@ class StackResourcesTab(tabs.Tab):
         stack = self.tab_group.kwargs['stack']
         try:
             stack_identifier = '%s/%s' % (stack.stack_name, stack.id)
-            resources = api.heat.resources_list(self.request, stack_identifier)
+            resources = api.heat.resources_list(self.request, stack_identifier, 3)
             LOG.debug('got resources %s' % resources)
             # The stack id is needed to generate the resource URL.
             for r in resources:
