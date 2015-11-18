@@ -16,9 +16,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import json
 
 import boto.vpc
+import boto.ec2
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -63,6 +65,8 @@ from openstack_dashboard.dashboards.project.routers.ports import\
 from openstack_dashboard.dashboards.project.routers import\
     views as r_views
 from openstack_dashboard.utils import metering as metering_utils
+
+LOG = logging.getLogger(__name__)
 
 class TestView(View):
     template_name = 'project/'
@@ -191,13 +195,19 @@ class HybridTopologyView(views.HorizonTemplateView):
 class JSONView(View):
 
     def __init__(self):
-        super(JSONView, self).__init__(self)
+        super(JSONView, self).__init__()
         self._vpc_conn = None
+        self._ec2_conn = None
 
     def vpc(self):
         if self._vpc_conn is None:
             self._vpc_conn = boto.vpc.VPCConnection()
         return self._vpc_conn
+
+    def ec2(self):
+        if self._ec2_conn is None:
+            self._ec2_conn = boto.ec2.EC2Connection()
+        return self._ec2_conn
 
     @property
     def is_router_enabled(self):
@@ -218,6 +228,45 @@ class JSONView(View):
                     and port['device_id'] == router_id):
                 return True
         return False
+
+    def _get_vpc_id(self, request, stack):
+        stack_resources = self._get_resources_from_stack(request, stack)
+        for resource in stack_resources:
+            resource_data = {'name': resource.resource_name,
+                                 'id': resource.physical_resource_id,
+                                 'type': resource.resource_type,
+                                 'status': resource.resource_status,
+                                 'stack_id': stack.id,
+                                 'stack_name': stack.stack_name }
+
+            if resource.resource_type == 'AWS::VPC::VPC':
+                return resource_data['id']
+
+    def _get_subnet_id(self, request, stack):
+        stack_resources = self._get_resources_from_stack(request, stack)
+        for resource in stack_resources:
+            resource_data = {'name': resource.resource_name,
+                                 'id': resource.physical_resource_id,
+                                 'type': resource.resource_type,
+                                 'status': resource.resource_status,
+                                 'stack_id': stack.id,
+                                 'stack_name': stack.stack_name }
+
+            if resource.resource_type == 'AWS::VPC::Subnet':
+                return resource_data['id']
+
+    def _get_internet_gateway_id(self, request, stack):
+        stack_resources = self._get_resources_from_stack(request, stack)
+        for resource in stack_resources:
+            resource_data = {'name': resource.resource_name,
+                                 'id': resource.physical_resource_id,
+                                 'type': resource.resource_type,
+                                 'status': resource.resource_status,
+                                 'stack_id': stack.id,
+                                 'stack_name': stack.stack_name }
+
+            if resource.resource_type == 'AWS::VPC::InternetGateway':
+                return resource_data['id']
 
     def _get_servers(self, request, stack):
         stack_resources = self._get_resources_from_stack(request, stack)
@@ -297,7 +346,15 @@ class JSONView(View):
                                     'cidr': subnet.cidr_block}
                                    for subnet in subnets],
                        'status': resource_data['status'],
-                       'router:external': True})
+                       'router:external': False})
+
+            elif resource.resource_type == 'AWS::VPC::InternetGateway':
+                networks.append({
+                    'name': resource_data['name'],
+                    'id': resource_data['id'],
+                    'subnets': [],
+                    'status': resource_data['status'],
+                    'router:external': True})
 
         # Add public networks to the networks list
         if self.is_router_enabled:
@@ -353,7 +410,13 @@ class JSONView(View):
             if resource.resource_type == 'AWS::VPC::VPNGateway':
                 routers.append({'id': resource_data['id'],
                         'name': resource_data['name'],
-                        'status': resource_data['status']})
+                        'status': resource_data['status'],
+                         'external_gateway_info': {
+                             'network_id': self._get_vpc_id(request, stack),
+                             'external_fixed_ips': [
+                                 {'subnet_id': self._get_subnet_id(request, stack)}
+                             ]
+                         }})
 
             elif resource.resource_type == 'OS::Neutron::Router':
                 router = api.neutron.router_get(request, resource_data['id'])
@@ -363,9 +426,9 @@ class JSONView(View):
                             'external_gateway_info': router.external_gateway_info})
 
                 self.add_resource_url('horizon:project:routers:detail', routers)
-                return routers
+        return routers
 
-    def _get_ports(self, request):
+    def _get_ports(self, request, stack):
         try:
             neutron_ports = api.neutron.port_list(request)
         except Exception:
@@ -379,21 +442,56 @@ class JSONView(View):
                   'status': port.status}
                  for port in neutron_ports
                  if port.device_owner != 'network:router_ha_interface']
+
         self.add_resource_url('horizon:project:networks:ports:detail',
                               ports)
+
+        stack_resources = self._get_resources_from_stack(request, stack)
+        for resource in stack_resources:
+            resource_data = {'name': resource.resource_name,
+                             'id': resource.physical_resource_id,
+                             'type': resource.resource_type,
+                             'status': resource.resource_status,
+                             'stack_id': stack.id,
+                             'stack_name': stack.stack_name }
+
+            if resource.resource_type == 'AWS::VPC::EC2Instance':
+                instances = self.ec2().get_only_instances(instance_ids=[resource_data['id']])
+                fake_port = {'id': resource_data['id'],
+                              'network_id': self._get_vpc_id(request, stack),
+                              'device_id': resource_data['id'],
+                              'fixed_ips': {
+                                  'subnet_id': self._get_subnet_id(request, stack),
+                                  'ip_address': instances[0].private_ip_address
+                              },
+                              'device_owner': 'compute:None',
+                              'status': 'ACTIVE'}
+                ports.append(fake_port)
+
+            if resource.resource_type == 'AWS::VPC::VPNGateway':
+                fake_port = {'id': resource_data['id'],
+                              'network_id': self._get_internet_gateway_id(request, stack),
+                              'device_id': resource_data['id'],
+                              'fixed_ips': {
+                                  'subnet_id': self._get_subnet_id(request, stack),
+                              },
+                              'device_owner': 'network:router_gateway',
+                              'status': 'ACTIVE'}
+                ports.append(fake_port)
         return ports
 
     def _get_stacks(self, request):
-        heat_stacks = []
+        stacks = []
         try:
             heat_stacks, self._more, self._prev = api.heat.stacks_list(request)
+            stacks = [x for x in heat_stacks if x.stack_status == 'CREATE_COMPLETE']
         except Exception:
             self._prev = False
             self._more = False
             msg = _('Unable to retrieve stack list.')
             exceptions.handle(self.request, msg)
 
-        return heat_stacks
+        return stacks
 
     def _get_stack_include_aws_autoscaling_group(self, request):
         all_stacks = self._get_stacks(request)
@@ -410,7 +508,6 @@ class JSONView(View):
             for resource in heat_resources:
                 if resource.resource_type == 'OS::Heat::AWSHybridAutoScalingGroup':
                     result_stacks.append(stack)
-                    break
 
         return result_stacks
 
@@ -451,13 +548,12 @@ class JSONView(View):
         data = {'servers': [],
                 'networks': [],
                 'ports': [],
-                'routers': [],
-                'stacks': []}
+                'routers': []}
 
         for stack in stacks:
             data = {'servers': self._get_servers(request, stack),
                 'networks': self._get_networks(request, stack),
-                'ports': self._get_ports(request),
+                'ports': self._get_ports(request, stack),
                 'routers': self._get_routers(request, stack)}
 
         self._prepare_gateway_ports(data['routers'], data['ports'])
